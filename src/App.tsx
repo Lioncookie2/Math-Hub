@@ -1,0 +1,154 @@
+import React, { useState } from 'react';
+import { Layout } from './components/Layout';
+import { ArrowRight, Box, GitBranch, Wifi } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { clsx } from 'clsx';
+
+import { HessianCalculator } from './components/HessianCalculator';
+import { DerivationCalculator } from './components/DerivationCalculator';
+import { NetworkCalculator } from './components/NetworkCalculator';
+
+type View = 'home' | 'hessian' | 'derivation' | 'network';
+
+function App() {
+  const [currentView, setCurrentView] = useState<View>('home');
+
+  return (
+    <Layout>
+      {currentView === 'home' && (
+        <div className="space-y-12">
+          <div className="text-center space-y-4 max-w-2xl mx-auto">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+              Utforsk <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Matematikken</span>
+            </h1>
+            <p className="text-lg text-gray-400">
+              Velg verktøyet du trenger for å løse komplekse problemer med stil.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {/* Hessian Card */}
+            <motion.button
+              whileHover={{ scale: 1.02, backgroundColor: 'rgba(139, 92, 246, 0.1)' }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setCurrentView('hessian')}
+              className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              
+              <div className="relative z-10 space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <Box className="w-6 h-6" />
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Hessian Matrise</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    Analyser funksjoner av to variabler. Beregn Hessian, determinant og 3D-graf.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 text-primary text-sm font-medium group-hover:translate-x-1 transition-transform">
+                  Start Kalkulator <ArrowRight className="w-4 h-4" />
+                </div>
+              </div>
+            </motion.button>
+
+            {/* Derivation Card */}
+            <motion.button
+              whileHover={{ scale: 1.02, backgroundColor: 'rgba(6, 182, 212, 0.1)' }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setCurrentView('derivation')}
+              className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              
+              <div className="relative z-10 space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-white transition-colors">
+                  <GitBranch className="w-6 h-6" />
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Derivasjon</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    Steg-for-steg løser for derivasjon. Se reglene og utregningen visuelt.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 text-secondary text-sm font-medium group-hover:translate-x-1 transition-transform">
+                  Start Løser <ArrowRight className="w-4 h-4" />
+                </div>
+              </div>
+            </motion.button>
+
+            {/* Network Card */}
+            <motion.button
+              whileHover={{ scale: 1.02, backgroundColor: 'rgba(236, 72, 153, 0.1)' }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setCurrentView('network')}
+              className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              
+              <div className="relative z-10 space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-colors">
+                  <Wifi className="w-6 h-6" />
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-semibold text-white mb-2">IP & Subnett</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    Visualiser nettverksmasker, CIDR og binære operasjoner for subnett.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 text-accent text-sm font-medium group-hover:translate-x-1 transition-transform">
+                  Start Kalkulator <ArrowRight className="w-4 h-4" />
+                </div>
+              </div>
+            </motion.button>
+          </div>
+        </div>
+      )}
+
+      {currentView === 'hessian' && (
+        <div className="space-y-6">
+          <button 
+            onClick={() => setCurrentView('home')}
+            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
+          >
+            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
+          </button>
+          <HessianCalculator />
+        </div>
+      )}
+
+      {currentView === 'derivation' && (
+        <div className="space-y-6">
+          <button 
+            onClick={() => setCurrentView('home')}
+            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
+          >
+            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
+          </button>
+          <DerivationCalculator />
+        </div>
+      )}
+
+      {currentView === 'network' && (
+        <div className="space-y-6">
+          <button 
+            onClick={() => setCurrentView('home')}
+            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
+          >
+            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
+          </button>
+          <NetworkCalculator />
+        </div>
+      )}
+    </Layout>
+  );
+}
+
+export default App;
+

@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #09090b;
+  --color-surface: #18181b;
+  --color-primary: #8b5cf6;
+  --color-secondary: #06b6d4;
+  --color-accent: #ec4899;
+
+  --font-sans: 'Inter', 'sans-serif';
+  --font-mono: 'Fira Code', 'monospace';
+
+  --animate-gradient-x: gradient-x 15s ease infinite;
+
+  @keyframes gradient-x {
+    0%, 100% {
+      background-size: 200% 200%;
+      background-position: left center;
+    }
+    50% {
+      background-size: 200% 200%;
+      background-position: right center;
+    }
+  }
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  /* Nå som fargene er definert i @theme, vil 'bg-background' fungere automatisk */
+  @apply bg-background text-white antialiased selection:bg-primary/30 selection:text-white;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.15), transparent 25%),
+    radial-gradient(circle at 0% 50%, rgba(6, 182, 212, 0.1), transparent 25%);
+  min-height: 100vh;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-surface;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-surface rounded-full hover:bg-primary transition-colors;
+  background-color: var(--color-surface); /* Fallback/tweaks */
+}
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-primary);
+}
+
+/* Math styles */
+.katex {
+  font-size: 1.2em;
+}
