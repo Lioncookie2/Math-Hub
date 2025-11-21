@@ -30,7 +30,7 @@ function App() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {/* Hessian Card */}
             <motion.button
-              whileHover={{ scale: 1.02, backgroundColor: 'rgba(139, 92, 246, 0.1)' }}
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setCurrentView('hessian')}
               className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden h-full"
@@ -54,7 +54,7 @@ function App() {
 
             {/* Derivation Card */}
             <motion.button
-              whileHover={{ scale: 1.02, backgroundColor: 'rgba(6, 182, 212, 0.1)' }}
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setCurrentView('derivation')}
               className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden h-full"
@@ -78,7 +78,7 @@ function App() {
 
             {/* Network Card */}
             <motion.button
-              whileHover={{ scale: 1.02, backgroundColor: 'rgba(236, 72, 153, 0.1)' }}
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setCurrentView('network')}
               className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden h-full"
@@ -102,7 +102,7 @@ function App() {
 
             {/* Circuit Lab */}
             <motion.button
-              whileHover={{ scale: 1.02, backgroundColor: 'rgba(14, 165, 233, 0.1)' }}
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setCurrentView('circuit')}
               className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden h-full"

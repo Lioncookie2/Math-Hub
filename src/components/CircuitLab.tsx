@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -251,6 +251,16 @@ export const CircuitLab: React.FC = () => {
   const [inputCount, setInputCount] = useState(2);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<SignalData>([]);
+  const nodesRef = useRef<Node[]>(initialNodes);
+  const edgesRef = useRef<Edge<SignalData>[]>([]);
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
+
 
   const activeLetters = useMemo(() => inputLetters.slice(0, inputCount), [inputCount]);
   const combos = useMemo(() => generateCombos(activeLetters), [activeLetters]);
@@ -340,7 +350,7 @@ export const CircuitLab: React.FC = () => {
         activeLetters.map((letter, idx) => [letter, combo.bits[idx] as 0 | 1]),
       );
 
-      const evaluation = evaluateCircuit(nodes, edges, assignments);
+      const evaluation = evaluateCircuit(nodesRef.current, edgesRef.current, assignments);
 
       setNodes((nds) =>
         nds.map((node) => {
@@ -388,7 +398,7 @@ export const CircuitLab: React.FC = () => {
       const assignments = Object.fromEntries(
         activeLetters.map((letter, bIdx) => [letter, combo.bits[bIdx] as 0 | 1]),
       );
-      const evaluation = evaluateCircuit(nodes, edges, assignments);
+      const evaluation = evaluateCircuit(nodesRef.current, edgesRef.current, assignments);
       fullResults[combo.key] = evaluation.output ?? 0;
     });
     setRowResults(fullResults);
