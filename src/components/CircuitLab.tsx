@@ -47,6 +47,9 @@ const handleColors: Record<'input' | 'output', string> = {
   output: '#f472b6',
 };
 
+// --- Node Components ---
+// Defined outside to prevent re-creation on render
+
 const InputNode: React.FC<NodeProps<{ label: string; value: number | null }>> = ({ data }) => (
   <div className="bg-background/80 border border-white/10 rounded-xl px-4 py-3 shadow-lg text-center min-w-[90px]">
     <div className="text-xs text-gray-500">Input</div>
@@ -184,6 +187,7 @@ interface EvaluationResult {
   output: 0 | 1 | null;
 }
 
+// Pure evaluation function
 const evaluateCircuit = (
   nodes: Node[],
   edges: Edge<SignalData>[],
@@ -192,6 +196,7 @@ const evaluateCircuit = (
   const nodeValues: Record<string, 0 | 1 | null> = {};
   const explanation: string[] = [];
 
+  // Initialize
   nodes.forEach((node) => {
     const nodeData = getNodeData(node);
     if (node.type === 'inputNode') {
@@ -205,16 +210,21 @@ const evaluateCircuit = (
 
   let progress = true;
   let guard = 0;
+  
+  // Propagate signals
   while (progress && guard < 50) {
     progress = false;
     guard++;
     sortedNodes.forEach((node) => {
       if (nodeValues[node.id] != null || node.type === 'inputNode') return;
+      
       const incoming = edges.filter((e) => e.target === node.id);
       if (!incoming.length) return;
+      
       const inputs = incoming
         .map((edge) => nodeValues[edge.source as string])
         .filter((v) => v !== null && v !== undefined) as Array<0 | 1>;
+        
       if (inputs.length !== incoming.length) return;
 
       const nodeData = getNodeData(node);
@@ -249,10 +259,16 @@ const evaluateCircuit = (
 
 export const CircuitLab: React.FC = () => {
   const [inputCount, setInputCount] = useState(2);
+  
+  // Initialize React Flow state
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<SignalData>([]);
+
+  // Refs to access current state in simulation loop without re-triggering
   const nodesRef = useRef<Node[]>(initialNodes);
   const edgesRef = useRef<Edge<SignalData>[]>([]);
+
+  // Keep refs in sync
   useEffect(() => {
     nodesRef.current = nodes;
   }, [nodes]);
@@ -260,7 +276,6 @@ export const CircuitLab: React.FC = () => {
   useEffect(() => {
     edgesRef.current = edges;
   }, [edges]);
-
 
   const activeLetters = useMemo(() => inputLetters.slice(0, inputCount), [inputCount]);
   const combos = useMemo(() => generateCombos(activeLetters), [activeLetters]);
@@ -272,8 +287,8 @@ export const CircuitLab: React.FC = () => {
   const [rowResults, setRowResults] = useState<Record<string, 0 | 1>>({});
   const [explanation, setExplanation] = useState<string[]>([]);
 
+  // --- Input Node Management ---
   useEffect(() => {
-    // Sync input nodes med valgt antall
     setNodes((nds) => {
       const filtered = nds.filter(
         (node) =>
@@ -304,10 +319,11 @@ export const CircuitLab: React.FC = () => {
 
       return [...repositioned, ...additions];
     });
-
+    
+    // Reset simulation when inputs change
     setCurrentIndex(0);
     setRowResults({});
-  }, [activeLetters, setNodes]);
+  }, [activeLetters, setNodes]); // Stable dependencies
 
   const handleAddGate = (type: GateType) => {
     const id = `${type}-${Date.now()}`;
@@ -342,45 +358,58 @@ export const CircuitLab: React.FC = () => {
     [setEdges, speed],
   );
 
-  const updateSignals = useCallback(
-    (comboIndex: number) => {
-      const combo = combos[comboIndex];
-      if (!combo) return;
-      const assignments = Object.fromEntries(
-        activeLetters.map((letter, idx) => [letter, combo.bits[idx] as 0 | 1]),
-      );
+  // --- Simulation Step Logic ---
+  const performSimulationStep = useCallback((index: number) => {
+    const combo = combos[index];
+    if (!combo) return;
 
-      const evaluation = evaluateCircuit(nodesRef.current, edgesRef.current, assignments);
+    const assignments = Object.fromEntries(
+      activeLetters.map((letter, idx) => [letter, combo.bits[idx] as 0 | 1])
+    );
 
-      setNodes((nds) =>
-        nds.map((node) => {
-          const nodeData = getNodeData(node);
-          return {
-            ...node,
-            data: { ...nodeData, value: evaluation.nodeValues[node.id] ?? null },
-          };
-        }),
-      );
-      setEdges((eds) =>
-        eds.map((edge) => ({
+    // Use refs to get latest topology without being reactive to it
+    const currentNodes = nodesRef.current;
+    const currentEdges = edgesRef.current;
+
+    const evaluation = evaluateCircuit(currentNodes, currentEdges, assignments);
+
+    // Only update if values actually changed to avoid unnecessary renders
+    // (Simplified: always updating for now, but using functional updates safely)
+    
+    setNodes((nds) =>
+      nds.map((node) => {
+        const newVal = evaluation.nodeValues[node.id] ?? null;
+        const oldVal = getNodeData(node).value;
+        if (newVal === oldVal) return node; // Skip update if same
+        return {
+          ...node,
+          data: { ...getNodeData(node), value: newVal },
+        };
+      })
+    );
+
+    setEdges((eds) =>
+      eds.map((edge) => {
+        const newVal = evaluation.edgeValues[edge.id] ?? null;
+        const oldVal = edge.data?.value;
+        if (newVal === oldVal && edge.data?.speed === speed) return edge;
+        return {
           ...edge,
-          data: { ...(edge.data ?? {}), value: evaluation.edgeValues[edge.id] ?? null, speed },
-        })),
-      );
-      setExplanation(evaluation.explanation);
-      const key = combo.key;
-      setRowResults((rows) => ({
-        ...rows,
-        [key]: evaluation.output ?? 0,
-      }));
-    },
-    [activeLetters, combos, edges, nodes, setEdges, setNodes, speed],
-  );
+          data: { ...(edge.data ?? {}), value: newVal, speed },
+        };
+      })
+    );
 
-  useEffect(() => {
-    updateSignals(currentIndex);
-  }, [currentIndex, updateSignals]);
+    setExplanation(evaluation.explanation);
+    
+    const key = combo.key;
+    setRowResults((rows) => ({
+      ...rows,
+      [key]: evaluation.output ?? 0,
+    }));
+  }, [activeLetters, combos, setNodes, setEdges, speed]); // Removed nodes/edges from dependencies
 
+  // --- Auto-play Loop ---
   useEffect(() => {
     if (!isPlaying) return;
     const interval = setInterval(() => {
@@ -392,12 +421,20 @@ export const CircuitLab: React.FC = () => {
     return () => clearInterval(interval);
   }, [isPlaying, direction, speed, combos.length]);
 
+  // --- Sync Simulation with Index ---
+  // This effect runs whenever currentIndex changes (from play loop or manual step)
+  useEffect(() => {
+    performSimulationStep(currentIndex);
+  }, [currentIndex, performSimulationStep]);
+
+
   const handleSkip = () => {
     const fullResults: Record<string, 0 | 1> = {};
     combos.forEach((combo) => {
       const assignments = Object.fromEntries(
         activeLetters.map((letter, bIdx) => [letter, combo.bits[bIdx] as 0 | 1]),
       );
+      // Evaluate using current topology refs
       const evaluation = evaluateCircuit(nodesRef.current, edgesRef.current, assignments);
       fullResults[combo.key] = evaluation.output ?? 0;
     });
@@ -653,4 +690,3 @@ export const CircuitLab: React.FC = () => {
 };
 
 export default CircuitLab;
-
