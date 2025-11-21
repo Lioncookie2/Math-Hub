@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Layout } from './components/Layout';
-import { ArrowRight, Box, GitBranch, Wifi, Brain, TrendingUp, Network, Lock } from 'lucide-react';
+import { ArrowRight, Box, GitBranch, Wifi, Brain, TrendingUp, Network, Lock, CircuitBoard } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { clsx } from 'clsx';
 
 import { HessianCalculator } from './components/HessianCalculator';
 import { DerivationCalculator } from './components/DerivationCalculator';
 import { NetworkCalculator } from './components/NetworkCalculator';
+import { CircuitLab } from './components/CircuitLab';
 
-type View = 'home' | 'hessian' | 'derivation' | 'network';
+type View = 'home' | 'hessian' | 'derivation' | 'network' | 'circuit';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('home');
@@ -27,7 +27,7 @@ function App() {
           </div>
 
           {/* Hovedverktøy */}
-          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {/* Hessian Card */}
             <motion.button
               whileHover={{ scale: 1.02, backgroundColor: 'rgba(139, 92, 246, 0.1)' }}
@@ -96,6 +96,30 @@ function App() {
                 </div>
                 <div className="flex items-center gap-2 text-accent text-sm font-medium group-hover:translate-x-1 transition-transform">
                   Start Kalkulator <ArrowRight className="w-4 h-4" />
+                </div>
+              </div>
+            </motion.button>
+
+            {/* Circuit Lab */}
+            <motion.button
+              whileHover={{ scale: 1.02, backgroundColor: 'rgba(14, 165, 233, 0.1)' }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setCurrentView('circuit')}
+              className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden h-full"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10 space-y-4 flex flex-col h-full">
+                <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-white transition-colors">
+                  <CircuitBoard className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold text-white mb-2">Kretsanalyse</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    Bygg logiske kretser med drag-and-drop, animert signalflyt og sanntids verditabeller.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-secondary text-sm font-medium group-hover:translate-x-1 transition-transform">
+                  Start Lab <ArrowRight className="w-4 h-4" />
                 </div>
               </div>
             </motion.button>
@@ -198,6 +222,18 @@ function App() {
             <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
           </button>
           <NetworkCalculator />
+        </div>
+      )}
+
+      {currentView === 'circuit' && (
+        <div className="space-y-6">
+          <button 
+            onClick={() => setCurrentView('home')}
+            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
+          >
+            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
+          </button>
+          <CircuitLab />
         </div>
       )}
     </Layout>

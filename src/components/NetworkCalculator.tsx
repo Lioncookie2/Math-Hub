@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Wifi, ArrowRight, Binary, Monitor, Globe, Share2 } from 'lucide-react';
-import { clsx } from 'clsx';
+import { Wifi, Binary, Globe } from 'lucide-react';
 
 interface SubnetResult {
   ip: string;

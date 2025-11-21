@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { all, create } from 'mathjs';
 import Plot from 'react-plotly.js';
+import type { Data, Layout } from 'plotly.js';
 import { motion } from 'framer-motion';
 import { Calculator, AlertCircle } from 'lucide-react';
 import 'katex/dist/katex.min.css';
@@ -22,10 +23,15 @@ interface HessianResult {
   classification?: string;
 }
 
+interface SurfaceGrid {
+  x: number[];
+  y: number[];
+  z: number[][];
+}
+
 export const HessianCalculator: React.FC = () => {
   const [mode, setMode] = useState<'expression' | 'manual'>('expression');
   const [expression, setExpression] = useState('x^2 + y^2');
-  const [manualInputs, setManualInputs] = useState({ fxx: '', fyy: '', fxy: '' }); // fxy = fyx usually
   const [evalPoint, setEvalPoint] = useState({ x: 0, y: 0 });
   const [result, setResult] = useState<HessianResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,27 +100,18 @@ export const HessianCalculator: React.FC = () => {
   }, [expression, evalPoint, mode]);
 
   // Generate data for 3D plot
-  const getPlotData = () => {
+  const getPlotData = (): SurfaceGrid | null => {
     if (mode !== 'expression' || !expression) return null;
     
     try {
       const expr = math.compile(expression);
-      const size = 20;
-      const xValues = [];
-      const yValues = [];
-      const zValues = [];
-      
-      for (let x = -5; x <= 5; x += 0.5) {
-        const row = [];
-        for (let y = -5; y <= 5; y += 0.5) {
-          row.push(expr.evaluate({x, y}));
-        }
-        zValues.push(row);
-        xValues.push(x);
-        yValues.push(x); // Simplified grid
-      }
+      const range = Array.from({ length: 21 }, (_, idx) => -5 + idx * 0.5);
 
-      return { x: xValues, y: yValues, z: zValues };
+      const zValues = range.map((x) =>
+        range.map((y) => expr.evaluate({ x, y })),
+      );
+
+      return { x: range, y: range, z: zValues };
     } catch (e) {
       return null;
     }
@@ -254,32 +251,36 @@ export const HessianCalculator: React.FC = () => {
            <Plot
              data={[
                {
+                 x: plotData.x,
+                 y: plotData.y,
                  z: plotData.z,
                  type: 'surface',
                  colorscale: 'Viridis',
                  showscale: false,
                  contours: {
-                    z: { show: true, usecolormap: true, highlightcolor: "limegreen", project: { z: true } }
-                 }
-               }
+                   z: { show: true, usecolormap: true, highlightcolor: 'limegreen', project: { z: true } },
+                 },
+               } as Partial<Data>,
              ]}
-             layout={{
-               autosize: true,
-               paper_bgcolor: 'rgba(0,0,0,0)',
-               plot_bgcolor: 'rgba(0,0,0,0)',
-               margin: { l: 0, r: 0, b: 0, t: 0 },
-               scene: {
-                 xaxis: { title: 'X', color: '#fff' },
-                 yaxis: { title: 'Y', color: '#fff' },
-                 zaxis: { title: 'Z', color: '#fff' },
-                 camera: {
-                    eye: { x: 1.5, y: 1.5, z: 1.5 }
-                 }
-               },
-             }}
+             layout={
+               {
+                 autosize: true,
+                 paper_bgcolor: 'rgba(0,0,0,0)',
+                 plot_bgcolor: 'rgba(0,0,0,0)',
+                 margin: { l: 0, r: 0, b: 0, t: 0 },
+                 scene: {
+                   xaxis: { title: 'X', color: '#fff' },
+                   yaxis: { title: 'Y', color: '#fff' },
+                   zaxis: { title: 'Z', color: '#fff' },
+                   camera: {
+                     eye: { x: 1.5, y: 1.5, z: 1.5 },
+                   },
+                 },
+               } as Partial<Layout>
+             }
              style={{ width: '100%', height: '100%' }}
-             useResizeHandler={true}
-             config={{ displayModeBar: false }} // Cleaner look
+             useResizeHandler
+             config={{ displayModeBar: false }}
            />
          ) : (
            <div className="absolute inset-0 flex items-center justify-center text-gray-500">

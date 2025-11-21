@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { create, all } from 'mathjs';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, BookOpen, CheckCircle, Lightbulb } from 'lucide-react';
+import type { MathNode, OperatorNode, FunctionNode } from 'mathjs';
+import { motion } from 'framer-motion';
+import { BookOpen, CheckCircle, Lightbulb } from 'lucide-react';
 import Latex from 'react-latex-next';
 import 'katex/dist/katex.min.css';
 
 const math = create(all);
+
+const isOperatorNode = (node: MathNode): node is OperatorNode =>
+  (node as OperatorNode).isOperatorNode === true;
+
+const isFunctionNode = (node: MathNode): node is FunctionNode =>
+  (node as FunctionNode).isFunctionNode === true;
 
 interface Step {
   title: string;
@@ -23,7 +30,7 @@ export const DerivationCalculator: React.FC = () => {
   const analyzeAndDerive = () => {
     try {
       setError(null);
-      const node = math.parse(expression);
+      const node = math.parse(expression) as MathNode;
       const resultNode = math.derivative(node, variable);
       const simplified = math.simplify(resultNode);
       
@@ -40,7 +47,7 @@ export const DerivationCalculator: React.FC = () => {
       });
 
       // Heuristics for rules
-      if (node.isOperatorNode) {
+      if (isOperatorNode(node)) {
         if (node.op === '*') {
           newSteps.push({
             title: "2. Produktregelen",
@@ -74,7 +81,7 @@ export const DerivationCalculator: React.FC = () => {
             latex: `(x^n)' = n \\cdot x^{n-1}`
           });
         }
-      } else if (node.isFunctionNode) {
+      } else if (isFunctionNode(node)) {
          newSteps.push({
             title: "2. Kjerneregelen",
             description: "Dette er en sammensatt funksjon. Vi må huske å gange med den deriverte av kjernen (indre funksjon).",
