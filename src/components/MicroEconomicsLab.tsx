@@ -258,32 +258,74 @@ export const MicroEconomicsLab: React.FC = () => {
   };
 
 
-    const handlePlotClick = (data: Readonly<any>) => {
-        if (mode !== 'practice' || showSolution) return;
+    const graphRef = useRef<HTMLDivElement>(null);
+    const [axisRanges, setAxisRanges] = useState<{maxX: number, maxY: number} | null>(null);
+
+    // Update axis ranges when calculation data changes (for mapping clicks)
+    useEffect(() => {
+        if (!calculationData || !optimalY) return;
+        const startY = optimalY * 0.1;
+        const endY = optimalY * 2.2;
         
-        const point = data.points[0];
-        if (!point) return;
+        // Calculate approx max Y from visible curves
+        // (Simplified logic: just use what plotData uses or a bit more)
+        const rangeY = Math.max(calculationData.optP, calculationData.optAC) * 2; 
+        
+        setAxisRanges({ maxX: endY, maxY: rangeY });
+    }, [calculationData, optimalY]);
+
+    const handleContainerClick = (e: React.MouseEvent) => {
+        if (mode !== 'practice' || showSolution || !graphRef.current || !axisRanges) return;
+        
+        // Only trigger if we clicked directly on the overlay div (or svg background), not on buttons/legend
+        // But the handler is on the wrapper, so it catches everything. We need bounding box math.
+
+        const rect = graphRef.current.getBoundingClientRect();
+        
+        // Plotly margins (must match layout)
+        const margin = { l: 60, r: 60, b: 50, t: 30 };
+        const plotWidth = rect.width - margin.l - margin.r;
+        const plotHeight = rect.height - margin.t - margin.b;
+
+        // Relative Mouse Pos inside Plot Area
+        const mouseX = e.clientX - rect.left - margin.l;
+        const mouseY = e.clientY - rect.top - margin.t;
+
+        if (mouseX < 0 || mouseX > plotWidth || mouseY < 0 || mouseY > plotHeight) return;
+
+        // Map to Data Coordinates
+        // X = (mouseX / plotWidth) * maxX
+        // Y = ((plotHeight - mouseY) / plotHeight) * maxY
+        
+        const rawX = (mouseX / plotWidth) * axisRanges.maxX;
+        const rawY = ((plotHeight - mouseY) / plotHeight) * axisRanges.maxY;
+        
+        // Round X to nearest integer for clean "jumping"
+        const x = Math.round(rawX);
+        const y = Math.max(0, rawY); // Don't allow negative Y
 
         setUserTraces(prev => ({
             ...prev,
             [activeTool]: {
-                x: [...prev[activeTool].x, point.x].sort((a, b) => a - b),
-                y: [...prev[activeTool].y, point.y]
-                // Note: Sorting X for drawing lines correctly left-to-right. 
-                // Ideally, we should insert Y at the correct index too, but simple append works for click-to-draw often.
-                // Let's rely on user clicking in order or just sorting pairs.
+                x: [...prev[activeTool].x, x].sort((a, b) => a - b),
+                y: [...prev[activeTool].y, y]
+                // Note: Simply appending Y. Sorting X is for line drawing.
+                // For correct Y mapping we need to re-sort Ys based on X sort order? 
+                // Let's just push pairs and sort pairs.
             }
         }));
     };
-
-    // Helper to sort user traces for line plotting
+    
+    // Improved Helper to sort user traces pairs
     const getSortedTrace = (tool: string) => {
         const t = userTraces[tool];
-        const combined = t.x.map((x, i) => ({x, y: t.y[i]}));
-        combined.sort((a, b) => a.x - b.x);
+        // Combine into points
+        const points = t.x.map((xVal, i) => ({ x: xVal, y: t.y[i] }));
+        // Sort by X
+        points.sort((a, b) => a.x - b.x);
         return {
-            x: combined.map(p => p.x),
-            y: combined.map(p => p.y)
+            x: points.map(p => p.x),
+            y: points.map(p => p.y)
         };
     };
 
@@ -758,10 +800,14 @@ export const MicroEconomicsLab: React.FC = () => {
                 </div>
 
                 <div className="lg:col-span-2">
-                     <div className="bg-surface/50 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden h-[600px] relative p-2 cursor-crosshair">
+                     <div 
+                        ref={graphRef}
+                        onClick={handleContainerClick}
+                        className="bg-surface/50 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden h-[600px] relative p-2 cursor-crosshair"
+                     >
                         <Plot
                             data={plotData.traces}
-                            onClick={handlePlotClick}
+                            // onClick={handlePlotClick} // Removed in favor of container click
                             layout={{
                                 autosize: true,
                                 paper_bgcolor: 'rgba(0,0,0,0)',
@@ -772,24 +818,32 @@ export const MicroEconomicsLab: React.FC = () => {
                                     color: '#94a3b8', 
                                     gridcolor: 'rgba(255,255,255,0.1)',
                                     zerolinecolor: 'rgba(255,255,255,0.2)',
-                                    showgrid: true, // Grid helps when drawing
-                                    dtick: 1 // Integer steps
+                                    showgrid: true, 
+                                    dtick: 1,
+                                    range: axisRanges ? [0, axisRanges.maxX] : undefined // Lock range for mapping
                                 },
                                 yaxis: { 
                                     title: 'Pris (P) / Kostnad (NOK)', 
                                     color: '#94a3b8', 
                                     gridcolor: 'rgba(255,255,255,0.1)',
                                     zerolinecolor: 'rgba(255,255,255,0.2)',
-                                    showgrid: true
+                                    showgrid: true,
+                                    range: axisRanges ? [0, axisRanges.maxY] : undefined // Lock range for mapping
                                 },
                                 legend: { orientation: 'h', y: 1.1, font: { color: 'white' }, bgcolor: 'rgba(0,0,0,0)' },
-                                hovermode: 'closest',
-                                dragmode: false // Disable zoom/pan to allow clicking
+                                hovermode: false, // Disable hover in practice mode to avoid distraction? Or keep it?
+                                dragmode: false 
                             } as Partial<Layout>}
-                            style={{ width: '100%', height: '100%' }}
+                            style={{ width: '100%', height: '100%', pointerEvents: 'none' }} // Let clicks pass through to container? No, Plotly captures them.
+                            // Actually, pointerEvents: none on Plot makes it impossible to hover. 
+                            // We need Plotly to be interactive but not block clicks? 
+                            // If we put onClick on container, the Plotly canvas might swallow it.
+                            // Better strategy: Overlay a transparent absolute div for clicking.
                             useResizeHandler
-                            config={{ displayModeBar: false }}
+                            config={{ displayModeBar: false, staticPlot: true }} 
                         />
+                        {/* Click Overlay */}
+                        <div className="absolute inset-0 z-10" />
                      </div>
                      {showSolution && (
                          <div className="mt-6 p-6 bg-surface/60 border border-green-500/30 rounded-3xl">
