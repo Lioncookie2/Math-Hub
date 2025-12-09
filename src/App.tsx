@@ -10,8 +10,9 @@ import { CircuitLab } from './components/CircuitLab';
 import { LinearRegressionLab } from './components/LinearRegressionLab';
 import { GradientDescentLab } from './components/GradientDescentLab';
 import { NeuralNetworkLab } from './components/NeuralNetworkLab';
+import { MicroEconomicsLab } from './components/MicroEconomicsLab';
 
-type View = 'home' | 'hessian' | 'derivation' | 'network' | 'circuit' | 'linear' | 'gradient' | 'neural';
+type View = 'home' | 'hessian' | 'derivation' | 'network' | 'circuit' | 'linear' | 'gradient' | 'neural' | 'economics';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('home');
@@ -123,6 +124,51 @@ function App() {
                 </div>
                 <div className="flex items-center gap-2 text-secondary text-sm font-medium group-hover:translate-x-1 transition-transform">
                   Start Lab <ArrowRight className="w-4 h-4" />
+                </div>
+              </div>
+            </motion.button>
+
+            {/* Microeconomics Lab */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setCurrentView('economics')}
+              className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden h-full md:col-span-2 lg:col-span-4"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute top-0 right-0 p-8 opacity-10">
+                 <TrendingUp className="w-24 h-24" />
+              </div>
+              <div className="relative z-10 space-y-4 flex flex-col h-full">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-500 group-hover:bg-yellow-500 group-hover:text-white transition-colors">
+                        <TrendingUp className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-white">Kostnads- & Profitthub</h3>
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-8">
+                    <div className="flex-1">
+                        <p className="text-gray-400 text-sm leading-relaxed mb-4">
+                            Generer komplette mikroøkonomiske grafer fra dine kostnadsfunksjoner. 
+                            Vi beregner MC, AC, Profitt og finner optimal tilpasning automatisk.
+                        </p>
+                        <ul className="text-sm text-gray-500 space-y-1 mb-4">
+                            <li>• Støtter Frikonkurranse & Monopol</li>
+                            <li>• Automatisk derivasjon (MC = dTC/dy)</li>
+                            <li>• Skyggelagt profitt/tap område</li>
+                        </ul>
+                    </div>
+                    <div className="hidden md:flex items-center justify-center bg-black/20 rounded-xl border border-white/5 p-4">
+                        <div className="text-xs font-mono text-gray-400">
+                            <div>TC(y) = 0.5y^2 + 20y</div>
+                            <div className="text-yellow-500">Optimum found: y* = 60</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-yellow-500 text-sm font-medium group-hover:translate-x-1 transition-transform pt-2">
+                  Start Analyse <ArrowRight className="w-4 h-4" />
                 </div>
               </div>
             </motion.button>
@@ -290,6 +336,17 @@ function App() {
             <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
           </button>
           <NeuralNetworkLab />
+        </div>
+      )}
+      {currentView === 'economics' && (
+        <div className="space-y-6">
+          <button 
+            onClick={() => setCurrentView('home')}
+            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
+          >
+            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
+          </button>
+          <MicroEconomicsLab />
         </div>
       )}
     </Layout>
