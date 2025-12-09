@@ -19,6 +19,13 @@ interface Example {
 
 const EXAMPLES: Example[] = [
     {
+        name: "Lærebok Monopol (Som på bildet)",
+        tc: "1 * y^2 + 10 * y + 500",
+        price: "200 - 4 * y", 
+        type: "monopoly",
+        desc: "Perfekt tilpasset eksempel som gir den klassiske 'X'-formen med U-formet AC-kurve."
+    },
+    {
         name: "Standard Frikonkurranse",
         tc: "0.5 * y^2 + 10 * y + 200",
         price: "60",
@@ -50,9 +57,9 @@ const EXAMPLES: Example[] = [
 
 export const MicroEconomicsLab: React.FC = () => {
   // Inputs
-  const [tcInput, setTcInput] = useState(EXAMPLES[0].tc); 
-  const [priceInput, setPriceInput] = useState(EXAMPLES[0].price); 
-  const [marketType, setMarketType] = useState<MarketType>(EXAMPLES[0].type);
+  const [tcInput, setTcInput] = useState("1 * y^2 + 10 * y + 500"); 
+  const [priceInput, setPriceInput] = useState("200 - 4 * y"); 
+  const [marketType, setMarketType] = useState<MarketType>('monopoly');
 
   // Calculated values
   const [optimalY, setOptimalY] = useState<number | null>(null);
@@ -200,8 +207,12 @@ export const MicroEconomicsLab: React.FC = () => {
     const plotData = useMemo(() => {
         if (!calculationData || !optimalY) return [];
 
-        const range = optimalY > 0 ? optimalY * 2.5 : 50;
-        const steps = 100;
+        // Adjusted range logic to look good (avoid huge AC values near 0)
+        // We start plotting from a small offset to avoid 1/0 infinity
+        const startY = optimalY * 0.1; 
+        const endY = optimalY * 2.2; // Go a bit past double the optimum
+        const steps = 200; // More steps for smoother curves
+        
         const xVals: number[] = [];
         const mcVals: number[] = [];
         const acVals: number[] = [];
@@ -209,10 +220,9 @@ export const MicroEconomicsLab: React.FC = () => {
         const pVals: number[] = [];
 
         // 1. Generate Basic Curves
-        for (let i = 1; i <= steps; i++) {
-            const y = (i / steps) * range;
-            if (y <= 0) continue; 
-
+        for (let i = 0; i <= steps; i++) {
+            const y = startY + (i / steps) * (endY - startY);
+            
             xVals.push(y);
             
             const mc = calculationData.compiledMC.evaluate({ y });
@@ -226,6 +236,11 @@ export const MicroEconomicsLab: React.FC = () => {
             pVals.push(p);
         }
 
+        // Calculate reasonable Y-axis max to avoid seeing the infinite start of AC
+        // We look at the value of Price at y=0 (or max P) and maybe 1.5x that.
+        // Or simply finding the max of the curves within the visible X range?
+        // Let's rely on Plotly's autoscaling but giving it "clean" data helps.
+        
         const traces: Data[] = [];
 
         // === Areas (Fills) ===
@@ -400,25 +415,70 @@ export const MicroEconomicsLab: React.FC = () => {
             });
         }
         
-        return traces;
+        // === Annotations for Curve Labels (Like the image) ===
+        const curveAnnotations: Partial<Shape>[] = []; // We'll convert to layout.annotations later
+        
+        // Helper to get the last value for positioning labels
+        const lastIndex = xVals.length - 1;
+        const lastX = xVals[lastIndex];
+
+        // We create a separate list for layout.annotations because they are not "shapes"
+        const textLabels = [
+            {
+                x: lastX, y: acVals[lastIndex],
+                xref: 'x', yref: 'y',
+                text: 'AC',
+                xanchor: 'left',
+                font: { color: '#fbbf24', size: 14, weight: 'bold' },
+                showarrow: false
+            },
+            {
+                x: lastX, y: mcVals[lastIndex],
+                xref: 'x', yref: 'y',
+                text: 'MC',
+                xanchor: 'left',
+                font: { color: '#ef4444', size: 14, weight: 'bold' },
+                showarrow: false
+            },
+            {
+                x: lastX, y: mrVals[lastIndex],
+                xref: 'x', yref: 'y',
+                text: 'MR',
+                xanchor: 'left',
+                font: { color: '#a855f7', size: 14, weight: 'bold' },
+                showarrow: false
+            },
+            {
+                x: lastX, y: pVals[lastIndex],
+                xref: 'x', yref: 'y',
+                text: marketType === 'competition' ? 'P' : 'D',
+                xanchor: 'left',
+                font: { color: '#3b82f6', size: 14, weight: 'bold' },
+                showarrow: false
+            }
+        ];
+
+        return { traces, textLabels };
     }, [calculationData, optimalY, marketType]);
 
     // Annotations for the graph
     const annotations = useMemo(() => {
-        if (!calculationData || !optimalY) return [];
-        const anns: Partial<Shape>[] = []; // Using shapes array type for now, but text annotations go in layout
-        // We will return an array of layout.annotations objects actually
+        if (!calculationData || !optimalY || !plotData.textLabels) return [];
+        
         const { optP, optAC, socY, socP } = calculationData;
 
         const list = [
+            // Points
             {
                 x: optimalY, y: optP,
                 xref: 'x', yref: 'y',
                 text: 'Pm',
                 showarrow: true,
                 arrowhead: 0,
-                ax: -30, ay: 0,
-                font: { color: 'white', size: 12 }
+                ax: -40, ay: 0,
+                font: { color: 'white', size: 14, weight: 'bold' },
+                bgcolor: 'rgba(0,0,0,0.5)',
+                borderpad: 4
             },
             {
                 x: optimalY, y: 0,
@@ -426,10 +486,13 @@ export const MicroEconomicsLab: React.FC = () => {
                 text: 'Qm',
                 showarrow: true,
                 arrowhead: 0,
-                ax: 0, ay: -20,
-                yshift: -10,
-                font: { color: 'white', size: 12 }
-            }
+                ax: 0, ay: -30,
+                yshift: 10,
+                font: { color: 'white', size: 14, weight: 'bold' },
+                 bgcolor: 'rgba(0,0,0,0.5)',
+                 borderpad: 4
+            },
+            ...plotData.textLabels
         ];
 
         if(marketType === 'monopoly') {
@@ -439,15 +502,17 @@ export const MicroEconomicsLab: React.FC = () => {
                 text: 'Qc',
                 showarrow: true,
                 arrowhead: 0,
-                ax: 0, ay: -20,
-                yshift: -10,
-                font: { color: 'white', size: 12 }
+                ax: 0, ay: -30,
+                 yshift: 10,
+                font: { color: 'gray', size: 12 },
+                 bgcolor: 'rgba(0,0,0,0.5)',
+                 borderpad: 4
             });
         }
 
         return list;
 
-    }, [calculationData, optimalY, marketType]);
+    }, [calculationData, optimalY, marketType, plotData]);
 
     // Shapes for Profit Shading
     const shapes: Partial<Shape>[] = useMemo(() => {
@@ -613,32 +678,33 @@ export const MicroEconomicsLab: React.FC = () => {
       <div className="lg:col-span-2 space-y-6">
         <div className="bg-surface/50 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden h-[500px] relative p-2">
             <Plot
-                data={plotData}
+                data={plotData.traces}
                 layout={{
                     autosize: true,
                     paper_bgcolor: 'rgba(0,0,0,0)',
                     plot_bgcolor: 'rgba(0,0,0,0)',
-                    margin: { l: 50, r: 20, b: 40, t: 30 },
+                    margin: { l: 60, r: 60, b: 50, t: 30 }, // Increased right margin for labels
                     xaxis: { 
-                        title: 'Kvantum (y)', 
+                        title: 'Kvantum (Q)', 
                         color: '#94a3b8', 
                         gridcolor: 'rgba(255,255,255,0.1)',
-                        zerolinecolor: 'rgba(255,255,255,0.2)'
+                        zerolinecolor: 'rgba(255,255,255,0.2)',
+                        showgrid: false // Cleaner look like image
                     },
                     yaxis: { 
-                        title: 'Pris / Kostnad (NOK)', 
+                        title: 'Pris (P) / Kostnad (NOK)', 
                         color: '#94a3b8', 
                         gridcolor: 'rgba(255,255,255,0.1)',
-                        zerolinecolor: 'rgba(255,255,255,0.2)'
+                        zerolinecolor: 'rgba(255,255,255,0.2)',
+                        showgrid: false // Cleaner look like image
                     },
                     // FIX: Legend with dark background
                     legend: { 
                         orientation: 'h', 
-                        y: -0.2, 
+                        y: 1.1, // Move legend to top
+                        x: 0,
                         font: { color: 'white' },
-                        bgcolor: 'rgba(0,0,0,0.5)',
-                        bordercolor: 'rgba(255,255,255,0.1)',
-                        borderwidth: 1
+                        bgcolor: 'rgba(0,0,0,0)',
                     },
                     shapes: shapes,
                     annotations: annotations as any,
