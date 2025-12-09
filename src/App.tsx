@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { Layout } from './components/Layout';
-import { ArrowRight, Box, GitBranch, Wifi, Brain, TrendingUp, Network, Lock, CircuitBoard } from 'lucide-react';
+import { ArrowRight, Box, GitBranch, Wifi, Brain, TrendingUp, Network, CircuitBoard } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { HessianCalculator } from './components/HessianCalculator';
 import { DerivationCalculator } from './components/DerivationCalculator';
 import { NetworkCalculator } from './components/NetworkCalculator';
 import { CircuitLab } from './components/CircuitLab';
+import { LinearRegressionLab } from './components/LinearRegressionLab';
+import { GradientDescentLab } from './components/GradientDescentLab';
+import { NeuralNetworkLab } from './components/NeuralNetworkLab';
 
-type View = 'home' | 'hessian' | 'derivation' | 'network' | 'circuit';
+type View = 'home' | 'hessian' | 'derivation' | 'network' | 'circuit' | 'linear' | 'gradient' | 'neural';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('home');
@@ -133,9 +136,15 @@ function App() {
               <div className="h-px flex-1 bg-white/10" />
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6 opacity-60 hover:opacity-100 transition-opacity duration-500">
+            <div className="grid md:grid-cols-3 gap-6 opacity-90">
                {/* Gradient Descent */}
-               <div className="p-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-sm relative overflow-hidden">
+               <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setCurrentView('gradient')}
+                  className="p-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-sm relative overflow-hidden text-left group"
+               >
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="absolute top-0 right-0 p-4 opacity-20">
                      <TrendingUp className="w-12 h-12" />
                   </div>
@@ -143,16 +152,22 @@ function App() {
                      <Brain className="w-5 h-5" />
                      <span className="font-bold text-sm">Gradient Descent</span>
                   </div>
-                  <p className="text-sm text-gray-400 mb-4">
+                  <p className="text-sm text-gray-400 mb-4 leading-relaxed">
                      Interaktiv visualisering av hvordan maskinlæringsmodeller "lærer" ved å minimere feilfunksjonen (Loss Function) i 3D-landskap.
                   </p>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 text-xs text-gray-300 border border-white/10">
-                     <Lock className="w-3 h-3" /> Under utvikling
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 text-xs text-green-300 border border-green-500/20">
+                     Start Lab <ArrowRight className="w-3 h-3" />
                   </div>
-               </div>
+               </motion.button>
 
                {/* Neural Network Playground */}
-               <div className="p-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-sm relative overflow-hidden">
+               <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setCurrentView('neural')}
+                  className="p-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-sm relative overflow-hidden text-left group"
+               >
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="absolute top-0 right-0 p-4 opacity-20">
                      <Network className="w-12 h-12" />
                   </div>
@@ -160,16 +175,22 @@ function App() {
                      <Network className="w-5 h-5" />
                      <span className="font-bold text-sm">Nevrale Nettverk</span>
                   </div>
-                  <p className="text-sm text-gray-400 mb-4">
+                  <p className="text-sm text-gray-400 mb-4 leading-relaxed">
                      Bygg dine egne enkle nevrale nettverk visuelt. Se hvordan vekter justeres og hvordan signalet flyter gjennom lagene (Forward Prop).
                   </p>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 text-xs text-gray-300 border border-white/10">
-                     <Lock className="w-3 h-3" /> Planlagt
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 text-xs text-purple-300 border border-purple-500/20">
+                     Start Lab <ArrowRight className="w-3 h-3" />
                   </div>
-               </div>
+               </motion.button>
 
                {/* Linear Regression */}
-               <div className="p-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-sm relative overflow-hidden">
+               <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setCurrentView('linear')}
+                  className="p-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-sm relative overflow-hidden text-left group"
+               >
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="absolute top-0 right-0 p-4 opacity-20">
                      <TrendingUp className="w-12 h-12" />
                   </div>
@@ -177,13 +198,13 @@ function App() {
                      <TrendingUp className="w-5 h-5" />
                      <span className="font-bold text-sm">Lineær Regresjon</span>
                   </div>
-                  <p className="text-sm text-gray-400 mb-4">
+                  <p className="text-sm text-gray-400 mb-4 leading-relaxed">
                      Klikk for å legge til datapunkter og se "best fit line" oppdatere seg live. Lær om minste kvadraters metode visuelt.
                   </p>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 text-xs text-gray-300 border border-white/10">
-                     <Lock className="w-3 h-3" /> Planlagt
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-xs text-blue-300 border border-blue-500/20">
+                     Start Lab <ArrowRight className="w-3 h-3" />
                   </div>
-               </div>
+               </motion.button>
             </div>
           </div>
         </div>
@@ -234,6 +255,41 @@ function App() {
             <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
           </button>
           <CircuitLab />
+        </div>
+      )}
+      {currentView === 'linear' && (
+        <div className="space-y-6">
+          <button 
+            onClick={() => setCurrentView('home')}
+            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
+          >
+            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
+          </button>
+          <LinearRegressionLab />
+        </div>
+      )}
+
+      {currentView === 'gradient' && (
+        <div className="space-y-6">
+          <button 
+            onClick={() => setCurrentView('home')}
+            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
+          >
+            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
+          </button>
+          <GradientDescentLab />
+        </div>
+      )}
+
+      {currentView === 'neural' && (
+        <div className="space-y-6">
+          <button 
+            onClick={() => setCurrentView('home')}
+            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
+          >
+            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
+          </button>
+          <NeuralNetworkLab />
         </div>
       )}
     </Layout>
