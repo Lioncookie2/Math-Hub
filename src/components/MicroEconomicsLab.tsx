@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import { create, all } from 'mathjs';
-import { Calculator, TrendingUp, DollarSign, BookOpen, AlertCircle } from 'lucide-react';
+import { Calculator, TrendingUp, DollarSign, BookOpen, AlertCircle, Lightbulb } from 'lucide-react';
 import Latex from 'react-latex-next';
 import type { Data, Layout, Shape } from 'plotly.js';
 
@@ -9,11 +9,43 @@ const math = create(all);
 
 type MarketType = 'competition' | 'monopoly';
 
+interface Example {
+    name: string;
+    tc: string;
+    price: string;
+    type: MarketType;
+    desc: string;
+}
+
+const EXAMPLES: Example[] = [
+    {
+        name: "Standard Frikonkurranse",
+        tc: "0.5 * y^2 + 10 * y + 200",
+        price: "60",
+        type: "competition",
+        desc: "En bedrift med økende grensekostnader i et marked med fast pris. Viser typisk tilpasning P = MC."
+    },
+    {
+        name: "Monopol (Lineær Etterspørsel)",
+        tc: "2 * y^2 + 5 * y + 100",
+        price: "200 - 3 * y", // P(y)
+        type: "monopoly",
+        desc: "Monopolist som møter en fallende etterspørselskurve. Tilpasning der MR = MC."
+    },
+    {
+        name: "S-formet Kostnad (Klassisk)",
+        tc: "0.04 * y^3 - 2 * y^2 + 40 * y + 100",
+        price: "50",
+        type: "competition",
+        desc: "Tredjegradsfunksjon som gir klassiske U-formede AC og MC kurver. MC krysser AC i bunnpunktet."
+    }
+];
+
 export const MicroEconomicsLab: React.FC = () => {
   // Inputs
-  const [tcInput, setTcInput] = useState('0.5 * y^2 + 20 * y'); // Total Cost
-  const [priceInput, setPriceInput] = useState('80'); // Price (Competition) or Demand P(Q) (Monopoly)
-  const [marketType, setMarketType] = useState<MarketType>('competition');
+  const [tcInput, setTcInput] = useState(EXAMPLES[0].tc); 
+  const [priceInput, setPriceInput] = useState(EXAMPLES[0].price); 
+  const [marketType, setMarketType] = useState<MarketType>(EXAMPLES[0].type);
 
   // Calculated values
   const [optimalY, setOptimalY] = useState<number | null>(null);
@@ -36,21 +68,19 @@ export const MicroEconomicsLab: React.FC = () => {
       const compiledMC = mcNode.compile();
 
       // AC = TC / y
-      // We handle y=0 specifically later to avoid division by zero in plots
+      // We use a string replacement for display, actual calc handles y
       const acNode = math.parse(`(${tcInput}) / y`);
       const compiledAC = acNode.compile();
 
       let mrNode;
       let compiledMR;
       let compiledP; // Price function P(y)
-      let demandNode;
 
       if (marketType === 'competition') {
         // P is constant
         const pVal = parseFloat(priceInput);
         if (isNaN(pVal)) throw new Error("For frikonkurranse må 'Pris' være et tall.");
         
-        demandNode = math.parse(priceInput);
         compiledP = () => pVal;
         
         // MR = P
@@ -58,9 +88,8 @@ export const MicroEconomicsLab: React.FC = () => {
         compiledMR = () => pVal;
       } else {
         // Monopoly: Input is Demand Function P(Q) or P(y)
-        // Let's assume input uses 'y' or 'Q', we normalize to 'y'
         let pStr = priceInput.replace(/Q/g, 'y');
-        demandNode = math.parse(pStr);
+        const demandNode = math.parse(pStr);
         compiledP = demandNode.compile().evaluate;
 
         // TR = P(y) * y
@@ -72,7 +101,7 @@ export const MicroEconomicsLab: React.FC = () => {
 
       // 2. Find Optimum y* (where MR = MC)
       // Numerical solver (Newton-Raphson simplified)
-      let y = 1; // Start guess
+      let y = 10; // Start guess (higher for typical econ problems)
       for (let i = 0; i < 50; i++) {
         const mcVal = compiledMC.evaluate({ y });
         const mrVal = marketType === 'competition' ? compiledMR() : compiledMR({ y });
@@ -107,7 +136,6 @@ export const MicroEconomicsLab: React.FC = () => {
       });
 
       return {
-        compiledTC,
         compiledMC,
         compiledAC,
         compiledMR,
@@ -120,7 +148,10 @@ export const MicroEconomicsLab: React.FC = () => {
 
     } catch (err: any) {
       console.error(err);
-      setError("Kunne ikke tolke funksjonene. Sjekk syntaksen (eks: 0.5 * y^2).");
+      // Only show error if input is somewhat complete
+      if (tcInput.length > 3) {
+          setError("Kunne ikke beregne. Sjekk at funksjonene er gyldige (bruk 'y' som variabel).");
+      }
       return null;
     }
   }, [tcInput, priceInput, marketType]);
@@ -134,12 +165,19 @@ export const MicroEconomicsLab: React.FC = () => {
     }
   }, [calculationData]);
 
+  const loadExample = (ex: Example) => {
+      setTcInput(ex.tc);
+      setPriceInput(ex.price);
+      setMarketType(ex.type);
+  };
+
 
   // Generate Plot Data
   const plotData = useMemo(() => {
     if (!calculationData || !optimalY) return [];
 
-    const range = optimalY * 2.5; // Zoom around optimum
+    // Smart range detection: go a bit past optimum or typical intersection
+    const range = optimalY > 0 ? optimalY * 2 : 50; 
     const steps = 100;
     const xVals: number[] = [];
     const mcVals: number[] = [];
@@ -149,17 +187,20 @@ export const MicroEconomicsLab: React.FC = () => {
 
     for (let i = 1; i <= steps; i++) {
         const y = (i / steps) * range;
+        if (y <= 0) continue; // avoid div by zero
+
         xVals.push(y);
-        mcVals.push(calculationData.compiledMC.evaluate({ y }));
-        acVals.push(calculationData.compiledAC.evaluate({ y }));
         
-        if (marketType === 'competition') {
-            mrVals.push(calculationData.compiledMR());
-            pVals.push(calculationData.compiledP());
-        } else {
-            mrVals.push(calculationData.compiledMR({ y }));
-            pVals.push(calculationData.compiledP({ y }));
-        }
+        // Evaluate
+        const mc = calculationData.compiledMC.evaluate({ y });
+        const ac = calculationData.compiledAC.evaluate({ y });
+        const mr = marketType === 'competition' ? calculationData.compiledMR() : calculationData.compiledMR({ y });
+        const p = marketType === 'competition' ? calculationData.compiledP() : calculationData.compiledP({ y });
+
+        mcVals.push(mc);
+        acVals.push(ac);
+        mrVals.push(mr);
+        pVals.push(p);
     }
 
     const traces: Data[] = [
@@ -168,7 +209,7 @@ export const MicroEconomicsLab: React.FC = () => {
             y: acVals,
             type: 'scatter',
             mode: 'lines',
-            name: 'AC (Gjennomsnittskostnad)',
+            name: 'AC (Gj.snitt kostnad)',
             line: { color: '#fbbf24', width: 3 }, // Amber
         },
         {
@@ -176,7 +217,7 @@ export const MicroEconomicsLab: React.FC = () => {
             y: mcVals,
             type: 'scatter',
             mode: 'lines',
-            name: 'MC (Marginalkostnad)',
+            name: 'MC (Grensekostnad)',
             line: { color: '#ef4444', width: 3 }, // Red
         },
         {
@@ -184,7 +225,7 @@ export const MicroEconomicsLab: React.FC = () => {
             y: mrVals,
             type: 'scatter',
             mode: 'lines',
-            name: 'MR (Marginalinntekt)',
+            name: 'MR (Grenseinntekt)',
             line: { color: '#a855f7', width: 2, dash: 'dash' }, // Purple
         },
         {
@@ -207,17 +248,6 @@ export const MicroEconomicsLab: React.FC = () => {
         marker: { size: 12, color: '#22c55e', line: { color: 'white', width: 2 } }
     });
     
-    // Add Cost Point Marker (for shading reference)
-    traces.push({
-        x: [optimalY],
-        y: [calculationData.optAC],
-        mode: 'markers',
-        type: 'scatter',
-        name: 'Kostnad ved Optimum',
-        marker: { size: 10, color: '#fbbf24' },
-        showlegend: false
-    });
-
     return traces;
   }, [calculationData, optimalY, marketType]);
 
@@ -311,6 +341,26 @@ export const MicroEconomicsLab: React.FC = () => {
                 </div>
             </div>
 
+            {/* Examples Quick Load */}
+            <div>
+                <label className="text-xs text-gray-500 font-medium ml-1 block mb-2">Last inn eksempel (SØK1220)</label>
+                <div className="grid grid-cols-1 gap-2">
+                    {EXAMPLES.map((ex) => (
+                        <button
+                            key={ex.name}
+                            onClick={() => loadExample(ex)}
+                            className="text-left px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition group"
+                        >
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-medium text-white group-hover:text-primary transition-colors">{ex.name}</span>
+                                <Lightbulb className="w-3 h-3 text-yellow-500 opacity-50 group-hover:opacity-100" />
+                            </div>
+                            <div className="text-[10px] text-gray-500 line-clamp-1">{ex.desc}</div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {error && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-red-400 text-sm">
                     <AlertCircle className="w-4 h-4" /> {error}
@@ -362,9 +412,22 @@ export const MicroEconomicsLab: React.FC = () => {
                         gridcolor: 'rgba(255,255,255,0.1)',
                         zerolinecolor: 'rgba(255,255,255,0.2)'
                     },
-                    legend: { orientation: 'h', y: -0.15, font: { color: 'white' } },
+                    // FIX: Legend with dark background
+                    legend: { 
+                        orientation: 'h', 
+                        y: -0.15, 
+                        font: { color: 'white' },
+                        bgcolor: 'rgba(0,0,0,0.5)',
+                        bordercolor: 'rgba(255,255,255,0.1)',
+                        borderwidth: 1
+                    },
                     shapes: shapes,
-                    hovermode: 'x unified'
+                    hovermode: 'x unified',
+                    hoverlabel: {
+                        bgcolor: '#1e293b',
+                        bordercolor: '#334155',
+                        font: { color: 'white' }
+                    }
                 } as Partial<Layout>}
                 style={{ width: '100%', height: '100%' }}
                 useResizeHandler
@@ -429,4 +492,3 @@ export const MicroEconomicsLab: React.FC = () => {
     </div>
   );
 };
-
