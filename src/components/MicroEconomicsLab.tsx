@@ -33,6 +33,13 @@ const EXAMPLES: Example[] = [
         desc: "Monopolist som møter en fallende etterspørselskurve. Tilpasning der MR = MC."
     },
     {
+        name: "Monopol m/ Dødvektstap (Enkel)",
+        tc: "10 * y + 0.5 * y^2", // MC = 10 + y (Linear)
+        price: "100 - y", // P = 100 - y (Linear)
+        type: "monopoly",
+        desc: "Klassisk eksempel med lineære funksjoner som gir tydelige trekanter for overskudd og dødvektstap."
+    },
+    {
         name: "S-formet Kostnad (Klassisk)",
         tc: "0.04 * y^3 - 2 * y^2 + 40 * y + 100",
         price: "50",
@@ -52,101 +59,116 @@ export const MicroEconomicsLab: React.FC = () => {
   const [optimalPrice, setOptimalPrice] = useState<number | null>(null);
   const [profit, setProfit] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [formulas, setFormulas] = useState({ mc: '', ac: '', mr: '' });
+    const [formulas, setFormulas] = useState({ mc: '', ac: '', mr: '' });
 
-  // Parsing and Calculation Logic
-  const calculationData = useMemo(() => {
-    try {
-      setError(null);
+    // New calculated values for visualization
+    const [socialY, setSocialY] = useState<number | null>(null);
+    const [socialP, setSocialP] = useState<number | null>(null);
 
-      // 1. Parse Functions
-      const tcNode = math.parse(tcInput);
-      const compiledTC = tcNode.compile();
+    // Parsing and Calculation Logic
+    const calculationData = useMemo(() => {
+        try {
+            setError(null);
 
-      // MC = d(TC)/dy
-      const mcNode = math.derivative(tcNode, 'y');
-      const compiledMC = mcNode.compile();
+            // 1. Parse Functions
+            const tcNode = math.parse(tcInput);
+            const compiledTC = tcNode.compile();
 
-      // AC = TC / y
-      // We use a string replacement for display, actual calc handles y
-      const acNode = math.parse(`(${tcInput}) / y`);
-      const compiledAC = acNode.compile();
+            // MC = d(TC)/dy
+            const mcNode = math.derivative(tcNode, 'y');
+            const compiledMC = mcNode.compile();
 
-      let mrNode;
-      let compiledMR;
-      let compiledP; // Price function P(y)
+            // AC = TC / y
+            const acNode = math.parse(`(${tcInput}) / y`);
+            const compiledAC = acNode.compile();
 
-      if (marketType === 'competition') {
-        // P is constant
-        const pVal = parseFloat(priceInput);
-        if (isNaN(pVal)) throw new Error("For frikonkurranse må 'Pris' være et tall.");
-        
-        compiledP = () => pVal;
-        
-        // MR = P
-        mrNode = math.parse(priceInput);
-        compiledMR = () => pVal;
-      } else {
-        // Monopoly: Input is Demand Function P(Q) or P(y)
-        let pStr = priceInput.replace(/Q/g, 'y');
-        const demandNode = math.parse(pStr);
-        compiledP = demandNode.compile().evaluate;
+            let mrNode;
+            let compiledMR;
+            let compiledP; // Price function P(y)
 
-        // TR = P(y) * y
-        const trNode = math.parse(`(${pStr}) * y`);
-        // MR = d(TR)/dy
-        mrNode = math.derivative(trNode, 'y');
-        compiledMR = mrNode.compile().evaluate;
-      }
+            if (marketType === 'competition') {
+                // P is constant
+                const pVal = parseFloat(priceInput);
+                if (isNaN(pVal)) throw new Error("For frikonkurranse må 'Pris' være et tall.");
 
-      // 2. Find Optimum y* (where MR = MC)
-      // Numerical solver (Newton-Raphson simplified)
-      let y = 10; // Start guess (higher for typical econ problems)
-      for (let i = 0; i < 50; i++) {
-        const mcVal = compiledMC.evaluate({ y });
-        const mrVal = marketType === 'competition' ? compiledMR() : compiledMR({ y });
-        
-        // Function to zero: f(y) = MC - MR
-        const f = mcVal - mrVal;
-        
-        if (Math.abs(f) < 0.01) break; // Close enough
+                compiledP = () => pVal;
 
-        // Numerical derivative of f (simple finite difference)
-        const h = 0.001;
-        const mcH = compiledMC.evaluate({ y: y + h });
-        const mrH = marketType === 'competition' ? compiledMR() : compiledMR({ y: y + h });
-        const df = ((mcH - mrH) - f) / h;
+                // MR = P
+                mrNode = math.parse(priceInput);
+                compiledMR = () => pVal;
+            } else {
+                // Monopoly: Input is Demand Function P(Q) or P(y)
+                let pStr = priceInput.replace(/Q/g, 'y');
+                const demandNode = math.parse(pStr);
+                compiledP = demandNode.compile().evaluate;
 
-        y = y - f / df;
-        if (y < 0) y = 0.1; // Clamp positive
-      }
+                // TR = P(y) * y
+                const trNode = math.parse(`(${pStr}) * y`);
+                // MR = d(TR)/dy
+                mrNode = math.derivative(trNode, 'y');
+                compiledMR = mrNode.compile().evaluate;
+            }
 
-      const optY = y;
-      const optP = marketType === 'competition' ? parseFloat(priceInput) : compiledP({ y: optY });
-      const optAC = compiledAC.evaluate({ y: optY });
-      const totalRev = optP * optY;
-      const totalCost = compiledTC.evaluate({ y: optY });
-      const calcProfit = totalRev - totalCost;
+            // Helper for Newton-Raphson
+            const solve = (targetFunc: (y: number) => number, startGuess = 10) => {
+                let y = startGuess;
+                for (let i = 0; i < 50; i++) {
+                    const val = targetFunc(y);
+                    if (Math.abs(val) < 0.01) return y;
 
-      // Update textual formulas
-      setFormulas({
-        mc: mcNode.toString(),
-        ac: `(${tcInput}) / y`,
-        mr: mrNode.toString()
-      });
+                    const h = 0.001;
+                    const valH = targetFunc(y + h);
+                    const deriv = (valH - val) / h;
+                    if (deriv === 0) break; 
+                    y = y - val / deriv;
+                    if (y < 0) y = 0.1;
+                }
+                return y;
+            };
 
-      return {
-        compiledMC,
-        compiledAC,
-        compiledMR,
-        compiledP,
-        optY,
-        optP,
-        optAC,
-        calcProfit
-      };
+            // 2. Find Optimum y* (where MR = MC)
+            const optY = solve((y) => {
+                const mcVal = compiledMC.evaluate({ y });
+                const mrVal = marketType === 'competition' ? compiledMR() : compiledMR({ y });
+                return mcVal - mrVal;
+            });
 
-    } catch (err: any) {
+            // 3. Find Social Optimum y_soc (where P = MC) - for DWL
+            const socY = solve((y) => {
+                const mcVal = compiledMC.evaluate({ y });
+                const pVal = marketType === 'competition' ? compiledP() : compiledP({ y });
+                return mcVal - pVal;
+            }, optY * 1.5); // Start guess a bit higher
+
+            const optP = marketType === 'competition' ? parseFloat(priceInput) : compiledP({ y: optY });
+            const optAC = compiledAC.evaluate({ y: optY });
+            const totalRev = optP * optY;
+            const totalCost = compiledTC.evaluate({ y: optY });
+            const calcProfit = totalRev - totalCost;
+
+            const socP = marketType === 'competition' ? optP : compiledP({ y: socY });
+
+            // Update textual formulas
+            setFormulas({
+                mc: mcNode.toString(),
+                ac: `(${tcInput}) / y`,
+                mr: mrNode.toString()
+            });
+
+            return {
+                compiledMC,
+                compiledAC,
+                compiledMR,
+                compiledP,
+                optY,
+                optP,
+                optAC,
+                calcProfit,
+                socY,
+                socP
+            };
+
+        } catch (err: any) {
       console.error(err);
       // Only show error if input is somewhat complete
       if (tcInput.length > 3) {
@@ -156,14 +178,16 @@ export const MicroEconomicsLab: React.FC = () => {
     }
   }, [tcInput, priceInput, marketType]);
 
-  // Update State Effect
-  useEffect(() => {
-    if (calculationData) {
-      setOptimalY(calculationData.optY);
-      setOptimalPrice(calculationData.optP);
-      setProfit(calculationData.calcProfit);
-    }
-  }, [calculationData]);
+    // Update State Effect
+    useEffect(() => {
+        if (calculationData) {
+            setOptimalY(calculationData.optY);
+            setOptimalPrice(calculationData.optP);
+            setProfit(calculationData.calcProfit);
+            setSocialY(calculationData.socY);
+            setSocialP(calculationData.socP);
+        }
+    }, [calculationData]);
 
   const loadExample = (ex: Example) => {
       setTcInput(ex.tc);
@@ -172,118 +196,313 @@ export const MicroEconomicsLab: React.FC = () => {
   };
 
 
-  // Generate Plot Data
-  const plotData = useMemo(() => {
-    if (!calculationData || !optimalY) return [];
+    // Generate Plot Data
+    const plotData = useMemo(() => {
+        if (!calculationData || !optimalY) return [];
 
-    // Smart range detection: go a bit past optimum or typical intersection
-    const range = optimalY > 0 ? optimalY * 2 : 50; 
-    const steps = 100;
-    const xVals: number[] = [];
-    const mcVals: number[] = [];
-    const acVals: number[] = [];
-    const mrVals: number[] = [];
-    const pVals: number[] = [];
+        const range = optimalY > 0 ? optimalY * 2.5 : 50;
+        const steps = 100;
+        const xVals: number[] = [];
+        const mcVals: number[] = [];
+        const acVals: number[] = [];
+        const mrVals: number[] = [];
+        const pVals: number[] = [];
 
-    for (let i = 1; i <= steps; i++) {
-        const y = (i / steps) * range;
-        if (y <= 0) continue; // avoid div by zero
+        // 1. Generate Basic Curves
+        for (let i = 1; i <= steps; i++) {
+            const y = (i / steps) * range;
+            if (y <= 0) continue; 
 
-        xVals.push(y);
-        
-        // Evaluate
-        const mc = calculationData.compiledMC.evaluate({ y });
-        const ac = calculationData.compiledAC.evaluate({ y });
-        const mr = marketType === 'competition' ? calculationData.compiledMR() : calculationData.compiledMR({ y });
-        const p = marketType === 'competition' ? calculationData.compiledP() : calculationData.compiledP({ y });
+            xVals.push(y);
+            
+            const mc = calculationData.compiledMC.evaluate({ y });
+            const ac = calculationData.compiledAC.evaluate({ y });
+            const mr = marketType === 'competition' ? calculationData.compiledMR() : calculationData.compiledMR({ y });
+            const p = marketType === 'competition' ? calculationData.compiledP() : calculationData.compiledP({ y });
 
-        mcVals.push(mc);
-        acVals.push(ac);
-        mrVals.push(mr);
-        pVals.push(p);
-    }
-
-    const traces: Data[] = [
-        {
-            x: xVals,
-            y: acVals,
-            type: 'scatter',
-            mode: 'lines',
-            name: 'AC (Gj.snitt kostnad)',
-            line: { color: '#fbbf24', width: 3 }, // Amber
-        },
-        {
-            x: xVals,
-            y: mcVals,
-            type: 'scatter',
-            mode: 'lines',
-            name: 'MC (Grensekostnad)',
-            line: { color: '#ef4444', width: 3 }, // Red
-        },
-        {
-            x: xVals,
-            y: mrVals,
-            type: 'scatter',
-            mode: 'lines',
-            name: 'MR (Grenseinntekt)',
-            line: { color: '#a855f7', width: 2, dash: 'dash' }, // Purple
-        },
-        {
-            x: xVals,
-            y: pVals,
-            type: 'scatter',
-            mode: 'lines',
-            name: marketType === 'competition' ? 'Pris (P = MR)' : 'Etterspørsel (D)',
-            line: { color: '#3b82f6', width: 3 }, // Blue
-        },
-    ];
-
-    // Add Optimum Point Marker
-    traces.push({
-        x: [optimalY],
-        y: [calculationData.optP],
-        mode: 'markers',
-        type: 'scatter',
-        name: 'Optimum (Likevekt)',
-        marker: { size: 12, color: '#22c55e', line: { color: 'white', width: 2 } }
-    });
-    
-    return traces;
-  }, [calculationData, optimalY, marketType]);
-
-  // Shapes for Profit Shading
-  const shapes: Partial<Shape>[] = useMemo(() => {
-      if (!calculationData || !optimalY) return [];
-      
-      const { optP, optAC } = calculationData;
-      const fillColor = optP > optAC ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'; // Green if profit, Red if loss
-
-      return [
-        {
-            type: 'rect',
-            x0: 0,
-            y0: optAC,
-            x1: optimalY,
-            y1: optP,
-            fillcolor: fillColor,
-            line: { width: 0 },
-            layer: 'below'
-        },
-        // Dashed lines to axis
-        {
-            type: 'line',
-            x0: optimalY, y0: 0,
-            x1: optimalY, y1: optP,
-            line: { color: 'gray', width: 1, dash: 'dot' }
-        },
-        {
-            type: 'line',
-            x0: 0, y0: optP,
-            x1: optimalY, y1: optP,
-            line: { color: 'gray', width: 1, dash: 'dot' }
+            mcVals.push(mc);
+            acVals.push(ac);
+            mrVals.push(mr);
+            pVals.push(p);
         }
-      ];
-  }, [calculationData, optimalY]);
+
+        const traces: Data[] = [];
+
+        // === Areas (Fills) ===
+        // Note: Plotly fills work best by drawing the boundary. 
+        // We add these traces FIRST so they are behind the lines.
+
+        if (marketType === 'monopoly' && calculationData.socY > optimalY) {
+            // Deadweight Loss Area (Triangle-ish between Q_m and Q_soc, bounded by Demand and MC)
+            const dwlXVals: number[] = [];
+            const dwlYVals_Demand: number[] = [];
+            const dwlYVals_MC: number[] = [];
+            
+            // Steps for the DWL region
+            for (let y = optimalY; y <= calculationData.socY; y += (calculationData.socY - optimalY) / 20) {
+                 dwlXVals.push(y);
+                 dwlYVals_Demand.push(calculationData.compiledP({ y }));
+                 dwlYVals_MC.push(calculationData.compiledMC.evaluate({ y }));
+            }
+            // Close the loop for a polygon shape if we were using shapes, 
+            // but for 'tonexty', we plot MC then Demand.
+            
+            // Trace A: MC Curve segment
+            traces.push({
+                x: dwlXVals,
+                y: dwlYVals_MC,
+                type: 'scatter',
+                mode: 'lines',
+                line: { width: 0 },
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+            
+            // Trace B: Demand Curve segment (fill to MC)
+            traces.push({
+                x: dwlXVals,
+                y: dwlYVals_Demand,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tonexty',
+                fillcolor: 'rgba(168, 85, 247, 0.3)', // Purpleish
+                line: { width: 0 },
+                name: 'Dødvektstap',
+                hoverinfo: 'skip'
+            });
+
+            // Consumer Surplus Area (Area below Demand, Above P_m, from 0 to Q_m)
+            const csXVals: number[] = [];
+            const csYVals_Demand: number[] = [];
+            const csYVals_Price: number[] = []; // Constant line at P_m
+
+            for (let y = 0; y <= optimalY; y += optimalY / 20) {
+                 csXVals.push(y);
+                 csYVals_Demand.push(calculationData.compiledP({ y }));
+                 csYVals_Price.push(calculationData.optP);
+            }
+
+            // Trace C: Price Line segment
+            traces.push({
+                x: csXVals,
+                y: csYVals_Price,
+                type: 'scatter',
+                mode: 'lines',
+                line: { width: 0 },
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+
+            // Trace D: Demand Curve segment (fill to Price)
+            traces.push({
+                x: csXVals,
+                y: csYVals_Demand,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tonexty',
+                fillcolor: 'rgba(244, 63, 94, 0.2)', // Pinkish Red (Consumer Surplus)
+                line: { width: 0 },
+                name: 'Konsumentoverskudd',
+                hoverinfo: 'skip'
+            });
+
+            // Producer Surplus Area (Area below P_m, Above MC, from 0 to Q_m)
+            // Visually from user image: Yellow region.
+            const psXVals: number[] = [];
+            const psYVals_MC: number[] = [];
+            
+            for (let y = 0; y <= optimalY; y += optimalY / 20) {
+                psXVals.push(y);
+                psYVals_MC.push(calculationData.compiledMC.evaluate({ y }));
+            }
+            
+            // Trace E: MC Curve segment
+            traces.push({
+                x: psXVals,
+                y: psYVals_MC,
+                type: 'scatter',
+                mode: 'lines',
+                line: { width: 0 },
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+
+            // Trace F: Price Line segment (fill to MC)
+            traces.push({
+                x: psXVals,
+                y: csYVals_Price, // Same price line P_m
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tonexty',
+                fillcolor: 'rgba(234, 179, 8, 0.2)', // Yellow (Producer Surplus)
+                line: { width: 0 },
+                name: 'Produsentoverskudd',
+                hoverinfo: 'skip'
+            });
+        }
+
+        // === Lines ===
+
+        traces.push(
+            {
+                x: xVals,
+                y: acVals,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'AC',
+                line: { color: '#fbbf24', width: 3 }, // Amber
+            },
+            {
+                x: xVals,
+                y: mcVals,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'MC',
+                line: { color: '#ef4444', width: 3 }, // Red
+            },
+            {
+                x: xVals,
+                y: mrVals,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'MR',
+                line: { color: '#a855f7', width: 2, dash: 'dash' }, // Purple
+            },
+            {
+                x: xVals,
+                y: pVals,
+                type: 'scatter',
+                mode: 'lines',
+                name: marketType === 'competition' ? 'P = MR' : 'D (Etterspørsel)',
+                line: { color: '#3b82f6', width: 3 }, // Blue
+            }
+        );
+
+        // Add Optimum Point Marker
+        traces.push({
+            x: [optimalY],
+            y: [calculationData.optP],
+            mode: 'markers',
+            type: 'scatter',
+            name: 'Optimum',
+            marker: { size: 10, color: '#22c55e', line: { color: 'white', width: 2 } }
+        });
+
+        // Add Social Optimum Marker (if monopoly)
+        if (marketType === 'monopoly') {
+             traces.push({
+                x: [calculationData.socY],
+                y: [calculationData.socP],
+                mode: 'markers',
+                type: 'scatter',
+                name: 'Samfunnsøkonomisk Opt.',
+                marker: { size: 8, color: '#a855f7', opacity: 0.7 }
+            });
+        }
+        
+        return traces;
+    }, [calculationData, optimalY, marketType]);
+
+    // Annotations for the graph
+    const annotations = useMemo(() => {
+        if (!calculationData || !optimalY) return [];
+        const anns: Partial<Shape>[] = []; // Using shapes array type for now, but text annotations go in layout
+        // We will return an array of layout.annotations objects actually
+        const { optP, optAC, socY, socP } = calculationData;
+
+        const list = [
+            {
+                x: optimalY, y: optP,
+                xref: 'x', yref: 'y',
+                text: 'Pm',
+                showarrow: true,
+                arrowhead: 0,
+                ax: -30, ay: 0,
+                font: { color: 'white', size: 12 }
+            },
+            {
+                x: optimalY, y: 0,
+                xref: 'x', yref: 'y',
+                text: 'Qm',
+                showarrow: true,
+                arrowhead: 0,
+                ax: 0, ay: -20,
+                yshift: -10,
+                font: { color: 'white', size: 12 }
+            }
+        ];
+
+        if(marketType === 'monopoly') {
+             list.push({
+                x: socY, y: 0,
+                xref: 'x', yref: 'y',
+                text: 'Qc',
+                showarrow: true,
+                arrowhead: 0,
+                ax: 0, ay: -20,
+                yshift: -10,
+                font: { color: 'white', size: 12 }
+            });
+        }
+
+        return list;
+
+    }, [calculationData, optimalY, marketType]);
+
+    // Shapes for Profit Shading
+    const shapes: Partial<Shape>[] = useMemo(() => {
+        if (!calculationData || !optimalY) return [];
+        
+        const { optP, optAC, socY, socP } = calculationData;
+        const fillColor = optP > optAC ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'; 
+
+        const shapeList: Partial<Shape>[] = [
+            // Profit Rectangle
+            {
+                type: 'rect',
+                x0: 0,
+                y0: optAC,
+                x1: optimalY,
+                y1: optP,
+                fillcolor: fillColor,
+                line: { width: 1, color: 'rgba(255,255,255,0.3)', dash: 'dot' },
+                layer: 'above'
+            },
+            // Dashed lines to axis for Qm
+            {
+                type: 'line',
+                x0: optimalY, y0: 0,
+                x1: optimalY, y1: optP,
+                line: { color: 'gray', width: 1, dash: 'dot' }
+            },
+            // Dashed lines to axis for Pm
+            {
+                type: 'line',
+                x0: 0, y0: optP,
+                x1: optimalY, y1: optP,
+                line: { color: 'gray', width: 1, dash: 'dot' }
+            },
+            // Dashed line for AC
+             {
+                type: 'line',
+                x0: 0, y0: optAC,
+                x1: optimalY, y1: optAC,
+                line: { color: 'gray', width: 1, dash: 'dot' }
+            }
+        ];
+        
+        if (marketType === 'monopoly') {
+             // Dashed line for Qc
+             shapeList.push({
+                type: 'line',
+                x0: socY, y0: 0,
+                x1: socY, y1: socP,
+                line: { color: 'gray', width: 1, dash: 'dot' }
+            });
+        }
+
+        return shapeList;
+    }, [calculationData, optimalY]);
 
   return (
     <div className="grid lg:grid-cols-3 gap-8">
@@ -415,13 +634,14 @@ export const MicroEconomicsLab: React.FC = () => {
                     // FIX: Legend with dark background
                     legend: { 
                         orientation: 'h', 
-                        y: -0.15, 
+                        y: -0.2, 
                         font: { color: 'white' },
                         bgcolor: 'rgba(0,0,0,0.5)',
                         bordercolor: 'rgba(255,255,255,0.1)',
                         borderwidth: 1
                     },
                     shapes: shapes,
+                    annotations: annotations as any,
                     hovermode: 'x unified',
                     hoverlabel: {
                         bgcolor: '#1e293b',
