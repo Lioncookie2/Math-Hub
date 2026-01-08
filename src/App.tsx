@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Layout } from './components/Layout';
-import { ArrowRight, Box, GitBranch, Wifi, Brain, TrendingUp, Network, CircuitBoard } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowRight, Search, ChevronUp, ChevronDown, BookOpen, User, Mail, Code, Zap, Database, ExternalLink } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { HessianCalculator } from './components/HessianCalculator';
 import { DerivationCalculator } from './components/DerivationCalculator';
@@ -11,344 +11,497 @@ import { LinearRegressionLab } from './components/LinearRegressionLab';
 import { GradientDescentLab } from './components/GradientDescentLab';
 import { NeuralNetworkLab } from './components/NeuralNetworkLab';
 import { MicroEconomicsLab } from './components/MicroEconomicsLab';
+import { AlgorithmVisualizer } from './components/AlgorithmVisualizer';
+import { MatrixPlayground } from './components/MatrixPlayground';
+import { LinkedListAnimator } from './components/LinkedListAnimator';
+import { RecursionTracer } from './components/RecursionTracer';
+import { DistributionSandbox } from './components/DistributionSandbox';
+import { PValueVisualizer } from './components/PValueVisualizer';
 
-type View = 'home' | 'hessian' | 'derivation' | 'network' | 'circuit' | 'linear' | 'gradient' | 'neural' | 'economics';
+import { SEMESTERS } from './utils/courses';
+import type { View, Semester } from './utils/courses';
 
 function App() {
-  const [currentView, setCurrentView] = useState<View>('home');
+  const [currentView, setCurrentView] = useState<View | 'home' | 'about'>('home');
+  const [showVision, setShowVision] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
 
-  return (
-    <Layout>
-      {currentView === 'home' && (
-        <div className="space-y-16">
-          <div className="text-center space-y-4 max-w-2xl mx-auto">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
-              Utforsk <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Matematikken</span>
-            </h1>
-            <p className="text-lg text-gray-400">
-              Velg verktøyet du trenger for å løse komplekse problemer med stil.
+  const getColorClasses = (colorName: string) => {
+    const colorMap: Record<string, { bg: string; text: string; hover: string; gradient: string }> = {
+      'text-primary': {
+        bg: 'bg-primary/20',
+        text: 'text-primary',
+        hover: 'group-hover:bg-primary group-hover:text-white',
+        gradient: 'from-primary/10'
+      },
+      'text-secondary': {
+        bg: 'bg-secondary/20',
+        text: 'text-secondary',
+        hover: 'group-hover:bg-secondary group-hover:text-white',
+        gradient: 'from-secondary/10'
+      },
+      'text-accent': {
+        bg: 'bg-accent/20',
+        text: 'text-accent',
+        hover: 'group-hover:bg-accent group-hover:text-white',
+        gradient: 'from-accent/10'
+      },
+      'text-blue-500': {
+        bg: 'bg-blue-500/20',
+        text: 'text-blue-500',
+        hover: 'group-hover:bg-blue-500 group-hover:text-white',
+        gradient: 'from-blue-500/10'
+      },
+      'text-purple-500': {
+        bg: 'bg-purple-500/20',
+        text: 'text-purple-500',
+        hover: 'group-hover:bg-purple-500 group-hover:text-white',
+        gradient: 'from-purple-500/10'
+      },
+      'text-green-500': {
+        bg: 'bg-green-500/20',
+        text: 'text-green-500',
+        hover: 'group-hover:bg-green-500 group-hover:text-white',
+        gradient: 'from-green-500/10'
+      },
+      'text-yellow-500': {
+        bg: 'bg-yellow-500/20',
+        text: 'text-yellow-500',
+        hover: 'group-hover:bg-yellow-500 group-hover:text-white',
+        gradient: 'from-yellow-500/10'
+      },
+      'text-orange-500': {
+        bg: 'bg-orange-500/20',
+        text: 'text-orange-500',
+        hover: 'group-hover:bg-orange-500 group-hover:text-white',
+        gradient: 'from-orange-500/10'
+      },
+      'text-cyan-500': {
+        bg: 'bg-cyan-500/20',
+        text: 'text-cyan-500',
+        hover: 'group-hover:bg-cyan-500 group-hover:text-white',
+        gradient: 'from-cyan-500/10'
+      },
+      'text-gray-500': {
+        bg: 'bg-gray-500/20',
+        text: 'text-gray-500',
+        hover: 'group-hover:bg-gray-500 group-hover:text-white',
+        gradient: 'from-gray-500/10'
+      }
+    };
+    return colorMap[colorName] || colorMap['text-primary'];
+  };
+
+  const ToolCard = ({
+    title,
+    description,
+    icon: Icon,
+    color,
+    onClick,
+    disabled = false
+  }: {
+    title: string;
+    description: string;
+    icon: any;
+    color: string;
+    onClick?: () => void;
+    disabled?: boolean;
+  }) => {
+    const colors = getColorClasses(color);
+
+    return (
+      <motion.button
+        whileHover={disabled ? {} : { scale: 1.02 }}
+        whileTap={disabled ? {} : { scale: 0.98 }}
+        onClick={disabled ? undefined : onClick}
+        disabled={disabled}
+        className={`group relative p-6 rounded-2xl border text-left transition-all overflow-hidden h-full ${disabled
+          ? 'border-white/5 bg-white/5 opacity-50 cursor-not-allowed'
+          : 'border-white/10 bg-surface/30 backdrop-blur-md hover:border-white/20'
+          }`}
+      >
+        {!disabled && (
+          <div className={`absolute inset-0 bg-gradient-to-br ${colors.gradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+        )}
+        <div className="relative z-10 space-y-3 flex flex-col h-full">
+          <div className={`w-10 h-10 rounded-xl ${colors.bg} flex items-center justify-center ${colors.text} ${!disabled ? colors.hover : ''} transition-colors`}>
+            <Icon className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              {description}
             </p>
           </div>
+          {!disabled && (
+            <div className={`flex items-center gap-2 ${colors.text} text-sm font-medium group-hover:translate-x-1 transition-transform`}>
+              Start <ArrowRight className="w-4 h-4" />
+            </div>
+          )}
+          {disabled && (
+            <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
+              Kommer snart
+            </div>
+          )}
+        </div>
+      </motion.button>
+    );
+  };
 
-          {/* Hovedverktøy */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {/* Hessian Card */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setCurrentView('hessian')}
-              className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden h-full"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="relative z-10 space-y-4 flex flex-col h-full">
-                <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                  <Box className="w-6 h-6" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-white mb-2">Hessian Matrise</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">
-                    Analyser funksjoner av to variabler. Beregn Hessian, determinant og 3D-graf.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-primary text-sm font-medium group-hover:translate-x-1 transition-transform">
-                  Start Kalkulator <ArrowRight className="w-4 h-4" />
-                </div>
-              </div>
-            </motion.button>
+  const filteredSemesters = useMemo(() => {
+    if (!searchQuery) return SEMESTERS;
+    const query = searchQuery.toLowerCase();
 
-            {/* Derivation Card */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setCurrentView('derivation')}
-              className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden h-full"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="relative z-10 space-y-4 flex flex-col h-full">
-                <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-white transition-colors">
-                  <GitBranch className="w-6 h-6" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-white mb-2">Derivasjon</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">
-                    Steg-for-steg løser for derivasjon. Se reglene og utregningen visuelt.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-secondary text-sm font-medium group-hover:translate-x-1 transition-transform">
-                  Start Løser <ArrowRight className="w-4 h-4" />
-                </div>
-              </div>
-            </motion.button>
+    return SEMESTERS.filter(semester =>
+      semester.courses.some(course =>
+        course.code.toLowerCase().includes(query) ||
+        course.name.toLowerCase().includes(query)
+      )
+    );
+  }, [searchQuery]);
 
-            {/* Network Card */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setCurrentView('network')}
-              className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden h-full"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="relative z-10 space-y-4 flex flex-col h-full">
-                <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-colors">
-                  <Wifi className="w-6 h-6" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-white mb-2">IP & Subnett</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">
-                    Visualiser nettverksmasker, CIDR og binære operasjoner for subnett.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-accent text-sm font-medium group-hover:translate-x-1 transition-transform">
-                  Start Kalkulator <ArrowRight className="w-4 h-4" />
-                </div>
-              </div>
-            </motion.button>
+  const handleBack = () => {
+    if (currentView !== 'home') {
+      setCurrentView('home');
+    } else if (selectedSemester) {
+      setSelectedSemester(null);
+    }
+  };
 
-            {/* Circuit Lab */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setCurrentView('circuit')}
-              className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden h-full"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="relative z-10 space-y-4 flex flex-col h-full">
-                <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-white transition-colors">
-                  <CircuitBoard className="w-6 h-6" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-white mb-2">Kretsanalyse</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">
-                    Bygg logiske kretser med drag-and-drop, animert signalflyt og sanntids verditabeller.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-secondary text-sm font-medium group-hover:translate-x-1 transition-transform">
-                  Start Lab <ArrowRight className="w-4 h-4" />
-                </div>
-              </div>
-            </motion.button>
+  return (
+    <Layout onNavClick={(view) => {
+      setCurrentView(view);
+      setSelectedSemester(null);
+    }}>
+      <div className="space-y-16">
+        {/* Header med MA:KI og Visjon */}
+        {currentView === 'home' && !selectedSemester && (
+          <div className="text-center space-y-8 max-w-3xl mx-auto">
+            <h1 className="text-7xl md:text-9xl font-bold tracking-tight">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">MA:KI</span>
+            </h1>
 
-            {/* Microeconomics Lab */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setCurrentView('economics')}
-              className="group relative p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md text-left transition-all overflow-hidden h-full md:col-span-2 lg:col-span-4"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute top-0 right-0 p-8 opacity-10">
-                 <TrendingUp className="w-24 h-24" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-center gap-3">
+                <h2 className="text-2xl font-semibold text-white">Vår Visjon</h2>
+                <button
+                  onClick={() => setShowVision(!showVision)}
+                  className="px-4 py-2 rounded-lg border border-white/10 bg-surface/30 hover:bg-surface/50 transition-colors text-sm text-gray-300 hover:text-white flex items-center gap-2"
+                >
+                  {showVision ? 'Lukk' : 'Les mer'}
+                  {showVision ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
               </div>
-              <div className="relative z-10 space-y-4 flex flex-col h-full">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-500 group-hover:bg-yellow-500 group-hover:text-white transition-colors">
-                        <TrendingUp className="w-6 h-6" />
+
+              <AnimatePresence>
+                {showVision && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="text-left bg-surface/30 border border-white/10 rounded-2xl p-8 space-y-8 overflow-hidden"
+                  >
+                    <div className="space-y-4">
+                      <h3 className="text-xl font-bold text-primary flex items-center gap-2">
+                        <BookOpen className="w-5 h-5" />
+                        Hva er MA:KI?
+                      </h3>
+                      <p className="text-gray-300 leading-relaxed">
+                        MA:KI er en omfattende læringsplattform designet spesielt for studieløpet i Maskinlæring og Kunstig Intelligens.
+                        Målet er å gjøre læring mer engasjerende og forståelig gjennom interaktive visualiseringer og sanntidsberegninger.
+                        Ved å manipulere verdier direkte, bygges en dypere intuitiv forståelse.
+                      </p>
                     </div>
-                    <h3 className="text-xl font-semibold text-white">Kostnads- & Profitthub</h3>
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-8">
-                    <div className="flex-1">
-                        <p className="text-gray-400 text-sm leading-relaxed mb-4">
-                            Generer komplette mikroøkonomiske grafer fra dine kostnadsfunksjoner. 
-                            Vi beregner MC, AC, Profitt og finner optimal tilpasning automatisk.
-                        </p>
-                        <ul className="text-sm text-gray-500 space-y-1 mb-4">
-                            <li>• Støtter Frikonkurranse & Monopol</li>
-                            <li>• Automatisk derivasjon (MC = dTC/dy)</li>
-                            <li>• Skyggelagt profitt/tap område</li>
-                        </ul>
-                    </div>
-                    <div className="hidden md:flex items-center justify-center bg-black/20 rounded-xl border border-white/5 p-4">
-                        <div className="text-xs font-mono text-gray-400">
-                            <div>TC(y) = 0.5y^2 + 20y</div>
-                            <div className="text-yellow-500">Optimum found: y* = 60</div>
+
+                    <div className="pt-8 border-t border-white/10 space-y-6">
+                      <h3 className="text-xl font-bold text-secondary flex items-center gap-2">
+                        <User className="w-5 h-5" />
+                        Om utvikleren
+                      </h3>
+                      <div className="flex flex-col md:flex-row items-start gap-6">
+                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center border border-white/10 flex-shrink-0">
+                          <User className="w-10 h-10 text-primary" />
                         </div>
-                    </div>
-                </div>
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-2xl font-bold text-white">Sebastian Miles Holme</h4>
+                            <p className="text-primary font-medium">Daglig leder, MilesTech AS • Student, MA:KI</p>
+                          </div>
 
-                <div className="flex items-center gap-2 text-yellow-500 text-sm font-medium group-hover:translate-x-1 transition-transform pt-2">
-                  Start Analyse <ArrowRight className="w-4 h-4" />
+                          <p className="text-gray-300 leading-relaxed italic">
+                            "Jeg er født i 2004 og studerer for tiden Maskinlæring og Kunstig Intelligens ved UiO, hvor jeg nå er på mitt andre semester.
+                            Ved siden av studiene leder jeg <span className="text-secondary font-bold">MilesTech AS</span>, hvor vi leverer skreddersydde dataprogrammeringstjenester."
+                          </p>
+
+                          <div className="flex flex-col md:flex-row gap-6 text-sm text-gray-400 pt-2">
+                            <div className="flex items-center gap-3">
+                              <Mail className="w-4 h-4 text-primary" />
+                              <span>Tilbakemeldinger: <span className="text-white">post@milestech.no</span></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
+
+        {/* Om Prosjektet View */}
+        {currentView === 'about' && (
+          <div className="max-w-4xl mx-auto space-y-12 pb-20">
+            <div className="text-center space-y-4">
+              <h2 className="text-5xl font-bold text-white">Om <span className="text-primary">MA:KI</span>-prosjektet</h2>
+              <p className="text-xl text-gray-400">En state-of-the-art læringsplattform for fremtidens ingeniører.</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="bg-surface/30 border border-white/10 rounded-3xl p-8 space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary mb-2">
+                  <Zap className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Filosofi</h3>
+                <p className="text-gray-400 leading-relaxed">
+                  Vi tror på at den beste måten å lære matematikk og algoritmer på er å "røre" ved verdiene.
+                  Ved å manipulere parametere og se resultatene umiddelbart, bygges en dypere intuitiv forståelse
+                  som tørre tekstbøker alene ikke kan gi.
+                </p>
+              </div>
+
+              <div className="bg-surface/30 border border-white/10 rounded-3xl p-8 space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center text-secondary mb-2">
+                  <Code className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Teknologi</h3>
+                <p className="text-gray-400 leading-relaxed">
+                  MA:KI er bygget for hastighet og personvern. Vi bruker <span className="text-white font-bold">Vite & React</span> for et lynraskt grensesnitt, <span className="text-white font-bold">Framer Motion</span> for silkemyke animasjoner og <span className="text-white font-bold">Tailwind CSS</span> for design.
+                  Viktigst av alt: Vi bruker <span className="text-primary font-bold">ingen eksterne API-kall</span> eller overvåking; alt kjører lokalt i din nettleser.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-surface/30 border border-white/10 rounded-3xl p-8 space-y-8">
+              <div className="flex items-center gap-4 border-b border-white/10 pb-6">
+                <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center text-accent">
+                  <Database className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Fullstack Uavhengighet</h3>
+                  <p className="text-sm text-gray-500 font-mono">Zero external API dependencies</p>
                 </div>
               </div>
-            </motion.button>
-          </div>
 
-          {/* Kommer Snart Seksjon */}
-          <div className="max-w-6xl mx-auto pt-8">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="h-px flex-1 bg-white/10" />
-              <h2 className="text-xl font-medium text-gray-400 uppercase tracking-widest">Kommer Snart - AI & ML</h2>
-              <div className="h-px flex-1 bg-white/10" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {[
+                  { name: 'Vite', desc: 'Build tool' },
+                  { name: 'React', desc: 'UI Framework' },
+                  { name: 'Lucide', desc: 'Iconography' },
+                  { name: 'Framer', desc: 'Motion' }
+                ].map(tech => (
+                  <div key={tech.name} className="p-4 bg-black/20 rounded-2xl border border-white/5 text-center">
+                    <div className="text-white font-bold mb-1">{tech.name}</div>
+                    <div className="text-[10px] text-gray-500 uppercase tracking-widest">{tech.desc}</div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6 opacity-90">
-               {/* Gradient Descent */}
-               <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setCurrentView('gradient')}
-                  className="p-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-sm relative overflow-hidden text-left group"
-               >
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute top-0 right-0 p-4 opacity-20">
-                     <TrendingUp className="w-12 h-12" />
-                  </div>
-                  <div className="flex items-center gap-3 mb-3 text-green-400">
-                     <Brain className="w-5 h-5" />
-                     <span className="font-bold text-sm">Gradient Descent</span>
-                  </div>
-                  <p className="text-sm text-gray-400 mb-4 leading-relaxed">
-                     Interaktiv visualisering av hvordan maskinlæringsmodeller "lærer" ved å minimere feilfunksjonen (Loss Function) i 3D-landskap.
-                  </p>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 text-xs text-green-300 border border-green-500/20">
-                     Start Lab <ArrowRight className="w-3 h-3" />
-                  </div>
-               </motion.button>
-
-               {/* Neural Network Playground */}
-               <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setCurrentView('neural')}
-                  className="p-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-sm relative overflow-hidden text-left group"
-               >
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute top-0 right-0 p-4 opacity-20">
-                     <Network className="w-12 h-12" />
-                  </div>
-                  <div className="flex items-center gap-3 mb-3 text-purple-400">
-                     <Network className="w-5 h-5" />
-                     <span className="font-bold text-sm">Nevrale Nettverk</span>
-                  </div>
-                  <p className="text-sm text-gray-400 mb-4 leading-relaxed">
-                     Bygg dine egne enkle nevrale nettverk visuelt. Se hvordan vekter justeres og hvordan signalet flyter gjennom lagene (Forward Prop).
-                  </p>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 text-xs text-purple-300 border border-purple-500/20">
-                     Start Lab <ArrowRight className="w-3 h-3" />
-                  </div>
-               </motion.button>
-
-               {/* Linear Regression */}
-               <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setCurrentView('linear')}
-                  className="p-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-sm relative overflow-hidden text-left group"
-               >
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute top-0 right-0 p-4 opacity-20">
-                     <TrendingUp className="w-12 h-12" />
-                  </div>
-                  <div className="flex items-center gap-3 mb-3 text-blue-400">
-                     <TrendingUp className="w-5 h-5" />
-                     <span className="font-bold text-sm">Lineær Regresjon</span>
-                  </div>
-                  <p className="text-sm text-gray-400 mb-4 leading-relaxed">
-                     Klikk for å legge til datapunkter og se "best fit line" oppdatere seg live. Lær om minste kvadraters metode visuelt.
-                  </p>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-xs text-blue-300 border border-blue-500/20">
-                     Start Lab <ArrowRight className="w-3 h-3" />
-                  </div>
-               </motion.button>
+            <div className="bg-primary/10 border border-primary/20 rounded-3xl p-8 text-center space-y-6">
+              <h3 className="text-2xl font-bold text-white">Vil du bidra eller har du funnet en feil?</h3>
+              <p className="text-gray-300 max-w-2xl mx-auto">
+                Vi bygger dette for studenter, av studenter. Hvis du har forslag til nye verktøy, eller oppdager småfeil i beregningene,
+                vil vi gjerne høre fra deg. Din innsikt gjør MA:KI bedre for alle.
+              </p>
+              <div className="flex justify-center gap-4">
+                <a href="mailto:post@milestech.no" className="px-8 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-colors shadow-lg shadow-primary/20 flex items-center gap-2">
+                  <Mail className="w-5 h-5" /> Kontakt oss
+                </a>
+                <a href="https://milestech.no" className="px-8 py-3 bg-white/5 text-white font-bold rounded-xl hover:bg-white/10 transition-colors flex items-center gap-2 border border-white/10">
+                  <ExternalLink className="w-5 h-5" /> MilesTech.no
+                </a>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {currentView === 'hessian' && (
-        <div className="space-y-6">
-          <button 
-            onClick={() => setCurrentView('home')}
-            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
-          >
-            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
-          </button>
-          <HessianCalculator />
-        </div>
-      )}
+        {/* Home View / Semester Grid */}
+        {currentView === 'home' && (
+          <div className="max-w-7xl mx-auto space-y-8">
+            <AnimatePresence mode="wait">
+              {!selectedSemester ? (
+                <motion.div
+                  key="grid"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-8"
+                >
+                  {/* Search bar */}
+                  <div className="relative max-w-2xl mx-auto">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Søk på emnekode eller emnenavn..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-12 pr-4 py-4 rounded-2xl bg-surface/30 border border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all text-white"
+                    />
+                  </div>
 
-      {currentView === 'derivation' && (
-        <div className="space-y-6">
-          <button 
-            onClick={() => setCurrentView('home')}
-            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
-          >
-            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
-          </button>
-          <DerivationCalculator />
-        </div>
-      )}
+                  {/* Grid layout */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredSemesters.map((semester) => (
+                      <motion.button
+                        key={semester.number}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setSelectedSemester(semester)}
+                        className="p-8 rounded-3xl border border-white/10 bg-surface/30 backdrop-blur-md hover:border-primary/30 transition-all text-left flex flex-col justify-between group"
+                      >
+                        <div className="space-y-4">
+                          <h3 className="text-3xl font-bold text-white group-hover:text-primary transition-colors">
+                            Semester {semester.number}
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {semester.courses.map(course => (
+                              <span key={course.code} className="px-2 py-1 rounded-md bg-white/5 text-xs text-gray-400 border border-white/5">
+                                {course.code}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="mt-8 flex items-center gap-2 text-primary font-medium">
+                          Utforsk <ArrowRight className="w-4 h-4" />
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
 
-      {currentView === 'network' && (
-        <div className="space-y-6">
-          <button 
-            onClick={() => setCurrentView('home')}
-            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
-          >
-            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
-          </button>
-          <NetworkCalculator />
-        </div>
-      )}
+                  {filteredSemesters.length === 0 && (
+                    <div className="text-center py-20 text-gray-500">
+                      Ingen resultater for "{searchQuery}"
+                    </div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="semester-view"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-8"
+                >
+                  <button
+                    onClick={handleBack}
+                    className="text-sm text-gray-400 hover:text-white flex items-center gap-2 transition-colors"
+                  >
+                    <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til semestersider
+                  </button>
 
-      {currentView === 'circuit' && (
-        <div className="space-y-6">
-          <button 
-            onClick={() => setCurrentView('home')}
-            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
-          >
-            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
-          </button>
-          <CircuitLab />
-        </div>
-      )}
-      {currentView === 'linear' && (
-        <div className="space-y-6">
-          <button 
-            onClick={() => setCurrentView('home')}
-            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
-          >
-            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
-          </button>
-          <LinearRegressionLab />
-        </div>
-      )}
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-4xl font-bold text-white">
+                      Semester {selectedSemester.number}
+                    </h2>
+                  </div>
 
-      {currentView === 'gradient' && (
-        <div className="space-y-6">
-          <button 
-            onClick={() => setCurrentView('home')}
-            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
-          >
-            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
-          </button>
-          <GradientDescentLab />
-        </div>
-      )}
+                  <div className="space-y-12">
+                    {selectedSemester.courses.map((course) => (
+                      <div key={course.code} className="space-y-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                            <BookOpen className="w-4 h-4 text-primary" />
+                          </div>
+                          <h3 className="text-2xl font-semibold text-white">
+                            {course.code} - {course.name}
+                          </h3>
+                        </div>
 
-      {currentView === 'neural' && (
-        <div className="space-y-6">
-          <button 
-            onClick={() => setCurrentView('home')}
-            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
-          >
-            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
-          </button>
-          <NeuralNetworkLab />
-        </div>
-      )}
-      {currentView === 'economics' && (
-        <div className="space-y-6">
-          <button 
-            onClick={() => setCurrentView('home')}
-            className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
-          >
-            <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
-          </button>
-          <MicroEconomicsLab />
-        </div>
-      )}
+                        {course.categories ? (
+                          <div className="grid grid-cols-1 gap-8">
+                            {course.categories.map((category) => (
+                              <div key={category.name} className="space-y-4">
+                                <div className="flex items-center gap-2 text-gray-400">
+                                  <category.icon className="w-4 h-4" />
+                                  <h4 className="text-sm font-medium uppercase tracking-wider">{category.name}</h4>
+                                </div>
+                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                  {category.tools.map((tool, idx) => (
+                                    <ToolCard
+                                      key={idx}
+                                      title={tool.title}
+                                      description={tool.description}
+                                      icon={tool.icon}
+                                      color={tool.color}
+                                      onClick={tool.view ? () => setCurrentView(tool.view!) : undefined}
+                                      disabled={tool.disabled}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {course.tools?.map((tool, idx) => (
+                              <ToolCard
+                                key={idx}
+                                title={tool.title}
+                                description={tool.description}
+                                icon={tool.icon}
+                                color={tool.color}
+                                onClick={tool.view ? () => setCurrentView(tool.view!) : undefined}
+                                disabled={tool.disabled}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Detailed Tool Views */}
+        <AnimatePresence mode="wait">
+          {currentView !== 'home' && (
+            <motion.div
+              key={currentView}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-6"
+            >
+              <button
+                onClick={handleBack}
+                className="text-sm text-gray-400 hover:text-white flex items-center gap-2 transition-colors"
+              >
+                <ArrowRight className="w-4 h-4 rotate-180" /> Tilbake til oversikt
+              </button>
+
+              {currentView === 'hessian' && <HessianCalculator />}
+              {currentView === 'derivation' && <DerivationCalculator />}
+              {currentView === 'network' && <NetworkCalculator />}
+              {currentView === 'circuit' && <CircuitLab />}
+              {currentView === 'linear' && <LinearRegressionLab />}
+              {currentView === 'gradient' && <GradientDescentLab />}
+              {currentView === 'neural' && <NeuralNetworkLab />}
+              {currentView === 'economics' && <MicroEconomicsLab />}
+              {currentView === 'algorithm' && <AlgorithmVisualizer />}
+              {currentView === 'matrix' && <MatrixPlayground />}
+              {currentView === 'linked-list' && <LinkedListAnimator />}
+              {currentView === 'recursion' && <RecursionTracer />}
+              {currentView === 'distribution' && <DistributionSandbox />}
+              {currentView === 'p-value' && <PValueVisualizer />}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </Layout>
   );
 }
